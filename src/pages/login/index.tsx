@@ -38,7 +38,7 @@ export const LoginPage: React.FC = () => {
                 icon="lucide:shopping-bag"
                 className="text-primary text-3xl"
               />
-              <h1 className="text-2xl font-bold">VyaparPOS</h1>
+              <h1 className="text-2xl font-bold">businessPOS</h1>
             </div>
             <p className="text-default-500 text-center">
               Sign in to your account to continue
@@ -142,7 +142,7 @@ export const LoginPage: React.FC = () => {
         </Card>
 
         <p className="text-center text-default-500 text-xs mt-4">
-          © 2024 VyaparPOS. All rights reserved.
+          © 2024 businessPOS. All rights reserved.
         </p>
       </div>
     </div>

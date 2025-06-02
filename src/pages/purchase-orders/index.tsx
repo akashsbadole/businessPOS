@@ -30,6 +30,7 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PurchaseOrder, Supplier, Product } from "../../types/pos";
+import { formatCurrency } from "../../utils/currency";
 
 // Mock data
 const mockSuppliers: Supplier[] = [
@@ -246,10 +247,6 @@ export const PurchaseOrdersPage: React.FC = () => {
   React.useEffect(() => {
     calculateTotals();
   }, [orderItems]);
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
-  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-IN");

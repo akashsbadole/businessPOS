@@ -1,6 +1,6 @@
-# Enhanced VyaparPOS - Setup Guide
+# Enhanced businessPOS - Setup Guide
 
-This guide will help you set up the enhanced VyaparPOS system with all the new features and capabilities.
+This guide will help you set up the enhanced businessPOS system with all the new features and capabilities.
 
 ## 🚀 Quick Start
 
@@ -339,7 +339,7 @@ npm run db:setup
 
 For technical support:
 
-- Email: support@vyaparpos.com
+- Email: support@businessPOS.com
 - Phone: (+91) 9333 911 911 | (+91) 6366827420
 - Documentation: Check ENHANCED_FEATURES.md
 - Issues: Create GitHub issues for bugs

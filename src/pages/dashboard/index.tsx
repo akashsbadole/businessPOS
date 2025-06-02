@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { DashboardStats } from "../../types/pos";
 import { DashboardService } from "../../services/database-factory";
 import { DummyDataLoader } from "../../components/admin/dummy-data-loader";
+import { formatCurrency } from "../../utils/currency";
 
 // Mock data for demonstration
 const mockStats: DashboardStats = {
@@ -95,10 +96,6 @@ export const DashboardPage: React.FC = () => {
 
     loadStats();
   }, [timeRange]);
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
-  };
 
   const StatCard: React.FC<{
     title: string;

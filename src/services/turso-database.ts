@@ -1,13 +1,13 @@
-import { createClient } from '@libsql/client';
-import type { 
-  Product, 
-  Customer, 
-  Category, 
-  Supplier, 
-  Transaction, 
+import { createClient } from "@libsql/client";
+import type {
+  Product,
+  Customer,
+  Category,
+  Supplier,
+  Transaction,
   BarcodeMapping,
-  DashboardStats 
-} from '../types/pos';
+  DashboardStats,
+} from "../types/pos";
 
 // Turso Database Client
 class TursoClient {
@@ -24,26 +24,28 @@ class TursoClient {
       const authToken = import.meta.env.VITE_TURSO_AUTH_TOKEN;
 
       if (!databaseUrl || !authToken) {
-        console.warn('Turso credentials not found, falling back to local SQLite');
+        console.warn(
+          "Turso credentials not found, falling back to local SQLite"
+        );
         // Fallback to local SQLite
         this.client = createClient({
-          url: 'file:' + (import.meta.env.VITE_LOCAL_DB_PATH || './local.db')
+          url: "file:" + (import.meta.env.VITE_LOCAL_DB_PATH || "./local.db"),
         });
       } else {
         // Use Turso cloud database
         this.client = createClient({
           url: databaseUrl,
-          authToken: authToken
+          authToken: authToken,
         });
       }
-      
+
       this.isInitialized = true;
-      console.log('Turso database client initialized successfully');
+      console.log("Turso database client initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize Turso client:', error);
+      console.error("Failed to initialize Turso client:", error);
       // Fallback to local SQLite
       this.client = createClient({
-        url: 'file:./local.db'
+        url: "file:./local.db",
       });
       this.isInitialized = true;
     }
@@ -51,28 +53,28 @@ class TursoClient {
 
   async execute(sql: string, params: any[] = []) {
     if (!this.isInitialized) {
-      throw new Error('Database client not initialized');
+      throw new Error("Database client not initialized");
     }
-    
+
     try {
       const result = await this.client.execute(sql, params);
       return result;
     } catch (error) {
-      console.error('Database query error:', error);
+      console.error("Database query error:", error);
       throw error;
     }
   }
 
   async batch(statements: Array<{ sql: string; args?: any[] }>) {
     if (!this.isInitialized) {
-      throw new Error('Database client not initialized');
+      throw new Error("Database client not initialized");
     }
-    
+
     try {
       const result = await this.client.batch(statements);
       return result;
     } catch (error) {
-      console.error('Database batch error:', error);
+      console.error("Database batch error:", error);
       throw error;
     }
   }
@@ -92,9 +94,9 @@ export const initializeDatabase = async () => {
   try {
     // Create tables if they don't exist
     await createTables();
-    console.log('Database tables initialized successfully');
+    console.log("Database tables initialized successfully");
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error("Failed to initialize database:", error);
     throw error;
   }
 };
@@ -121,7 +123,7 @@ const createTables = async () => {
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Customers table
     `CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY,
@@ -139,7 +141,7 @@ const createTables = async () => {
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Categories table
     `CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
@@ -149,7 +151,7 @@ const createTables = async () => {
       isActive BOOLEAN DEFAULT 1,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Suppliers table
     `CREATE TABLE IF NOT EXISTS suppliers (
       id TEXT PRIMARY KEY,
@@ -165,7 +167,7 @@ const createTables = async () => {
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Transactions/Invoices table
     `CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
@@ -184,7 +186,7 @@ const createTables = async () => {
       items TEXT NOT NULL,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Barcode mappings table
     `CREATE TABLE IF NOT EXISTS barcode_mappings (
       id TEXT PRIMARY KEY,
@@ -193,7 +195,21 @@ const createTables = async () => {
       isActive BOOLEAN DEFAULT 1,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (productId) REFERENCES products (id)
-    )`
+    )`,
+
+    // Users table for authentication
+    `CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'cashier' CHECK (role IN ('admin', 'manager', 'cashier', 'inventory')),
+      permissions TEXT NOT NULL, -- JSON: Array of permission strings
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+      last_login TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const table of tables) {
@@ -202,12 +218,12 @@ const createTables = async () => {
 
   // Create indexes for better performance
   const indexes = [
-    'CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)',
-    'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)',
-    'CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)',
-    'CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)',
-    'CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer)',
-    'CREATE INDEX IF NOT EXISTS idx_barcode_mappings_barcode ON barcode_mappings(barcode)'
+    "CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)",
+    "CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)",
+    "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_customer ON transactions(customer)",
+    "CREATE INDEX IF NOT EXISTS idx_barcode_mappings_barcode ON barcode_mappings(barcode)",
   ];
 
   for (const index of indexes) {

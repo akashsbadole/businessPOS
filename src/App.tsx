@@ -30,7 +30,7 @@ import { DashboardPage } from "./pages/dashboard";
 import { SuppliersPage } from "./pages/suppliers";
 import { PurchaseOrdersPage } from "./pages/purchase-orders";
 import { StatusPage } from "./pages/status";
-import { InvoiceTemplatesPage } from "./pages/invoice-templates";
+import { BusinessSettingsPage } from "./pages/business-settings";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,8 +71,8 @@ const AppContent: React.FC = () => {
         <Route path="/purchase-orders">
           <PurchaseOrdersPage />
         </Route>
-        <Route path="/invoice-templates">
-          <InvoiceTemplatesPage />
+        <Route path="/business-settings">
+          <BusinessSettingsPage />
         </Route>
         <Route path="/reports">
           <ReportsPage />

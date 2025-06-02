@@ -16,7 +16,8 @@
     "db:push-manual": "node push-schema.js",
     "db:test": "node test-turso-connection.js",
     "load-dummy-data": "node load-dummy-data-node.js",
-    "load-dummy-data-tsx": "tsx src/scripts/load-dummy-data.ts"
+    "load-dummy-data-tsx": "tsx src/scripts/load-dummy-data.ts",
+    "test-simple": "tsx src/scripts/simple-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -122,7 +122,7 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     label="Business Name"
                     placeholder="Enter your business name"
-                    defaultValue="Sharma General Store"
+                    defaultValue="Akash Badole"
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

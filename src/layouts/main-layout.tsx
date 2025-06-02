@@ -49,12 +49,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       path: "/purchase-orders",
       icon: "lucide:clipboard-list",
     },
-    {
-      name: "Invoice Templates",
-      path: "/invoice-templates",
-      icon: "lucide:file-text",
-    },
     { name: "Reports", path: "/reports", icon: "lucide:bar-chart" },
+    {
+      name: "Business Settings",
+      path: "/business-settings",
+      icon: "lucide:building",
+    },
     { name: "Settings", path: "/settings", icon: "lucide:settings" },
     { name: "Status", path: "/status", icon: "lucide:activity" },
   ];
@@ -73,7 +73,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               icon="lucide:shopping-bag"
               className="text-primary text-2xl"
             />
-            <p className="font-bold text-inherit">VyaparPOS</p>
+            <p className="font-bold text-inherit">businessPOS</p>
           </div>
         </NavbarBrand>
 

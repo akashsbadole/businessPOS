@@ -1,12 +1,13 @@
-# VyaparPOS - Point of Sale System for Indian Small Businesses
+# businessPOS - Point of Sale System for Indian Small Businesses
 
-VyaparPOS is a comprehensive point of sale system designed specifically for small businesses in India. It includes GST compliance, inventory management, customer tracking, and detailed reporting features.
+businessPOS is a comprehensive point of sale system designed specifically for small businesses in India. It includes GST compliance, inventory management, customer tracking, and detailed reporting features.
 
-![VyaparPOS Screenshot](https://img.heroui.chat/image/dashboard?w=1200&h=600&u=pos)
+![businessPOS Screenshot](https://img.heroui.chat/image/dashboard?w=1200&h=600&u=pos)
 
 ## Features
 
 ### Core POS Functionality
+
 - **Intuitive Sales Interface**: User-friendly interface for quick sales processing
 - **Product Catalog Management**: Easily manage your product inventory with barcode support
 - **Multiple Payment Methods**: Support for Cash, UPI, Cards, and Digital Wallets
@@ -15,6 +16,7 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 - **Keyboard Shortcuts**: Efficient operations with keyboard shortcuts for common actions
 
 ### India-Specific Features
+
 - **GST Compliance**: Automatic GST calculation (CGST, SGST, IGST)
 - **HSN Code Management**: Track HSN codes for all products
 - **GSTR-1 & GSTR-3B Reports**: Generate ready-to-file GST reports
@@ -22,6 +24,7 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 - **Invoice Customization**: Customize invoices with your business details
 
 ### Inventory Management
+
 - **Stock Tracking**: Real-time inventory tracking with low-stock alerts
 - **Batch & Expiry Tracking**: Track product batches and expiry dates
 - **Purchase Orders**: Create and manage purchase orders
@@ -29,12 +32,14 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 - **Barcode Generation**: Generate and print barcodes for products
 
 ### Customer Management
+
 - **Customer Database**: Store customer details and purchase history
 - **Loyalty Program**: Implement points-based loyalty programs
 - **Credit Management**: Track customer credit and pending payments
 - **Customer Analytics**: Understand buying patterns and preferences
 
 ### Reporting & Analytics
+
 - **Sales Reports**: Daily, weekly, monthly, and custom period reports
 - **Inventory Reports**: Stock levels, movement, and valuation reports
 - **GST Reports**: GSTR-1, GSTR-3B, and HSN summary reports
@@ -42,12 +47,14 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 - **Visual Dashboard**: Visual representation of key business metrics
 
 ### Security & User Management
+
 - **Role-Based Access**: Define roles with specific permissions
 - **Audit Trails**: Track all system activities with user details
 - **Secure Authentication**: Password protection and secure login
 - **Data Backup**: Automatic and manual backup options
 
 ### Hardware Integration
+
 - **Thermal Printers**: Support for standard 80mm thermal receipt printers
 - **Barcode Scanners**: Compatible with USB and Bluetooth scanners
 - **Cash Drawers**: Automatic cash drawer opening on sale completion
@@ -64,6 +71,7 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 ## Deployment Instructions
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - npm or yarn
 - Git
@@ -71,12 +79,14 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 ### Installation Steps
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/vyapar-pos.git
    cd vyapar-pos
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    # or
@@ -84,12 +94,14 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
    ```
 
 3. **Set up the database**
+
    ```bash
    npx drizzle-kit generate:sqlite
    npx drizzle-kit push:sqlite
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    # or
@@ -97,6 +109,7 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
    ```
 
 5. **Build for production**
+
    ```bash
    npm run build
    # or
@@ -110,16 +123,20 @@ VyaparPOS is a comprehensive point of sale system designed specifically for smal
 ### Deployment Options
 
 #### Option 1: Local Server
+
 For a standalone local deployment (e.g., on a store computer):
+
 ```bash
 npm run build
 npx serve -s dist
 ```
 
 #### Option 2: Cloud Hosting
+
 Deploy to services like Vercel, Netlify, or AWS Amplify:
 
 **Vercel**
+
 ```bash
 npm install -g vercel
 vercel login
@@ -127,6 +144,7 @@ vercel
 ```
 
 **Netlify**
+
 ```bash
 npm install -g netlify-cli
 netlify login
@@ -134,6 +152,7 @@ netlify deploy --prod
 ```
 
 #### Option 3: Docker Deployment
+
 ```bash
 # Build the Docker image
 docker build -t vyapar-pos .
@@ -145,11 +164,13 @@ docker run -p 8080:80 vyapar-pos
 ### Hardware Setup
 
 1. **Thermal Printer Configuration**
+
    - Connect your thermal printer to your computer
    - Ensure it's set as the default printer or configure in settings
    - Test printing from the POS settings page
 
 2. **Barcode Scanner Setup**
+
    - Most USB barcode scanners work as keyboard input devices
    - For Bluetooth scanners, pair with your device before using
    - Test scanning in the product search field
@@ -171,10 +192,12 @@ docker run -p 8080:80 vyapar-pos
 ## Support & Troubleshooting
 
 For support, please contact:
-- Email: support@vyaparpos.com
+
+- Email: support@businessPOS.com
 - Phone: (+91) 9333 911 911 | (+91) 6366827420
 
 Common troubleshooting steps:
+
 1. Clear browser cache and cookies
 2. Restart the application
 3. Check printer connection and settings
@@ -187,4 +210,4 @@ This software is licensed under the [MIT License](LICENSE).
 
 ---
 
-© 2024 VyaparPOS. All rights reserved.
+© 2024 businessPOS. All rights reserved.

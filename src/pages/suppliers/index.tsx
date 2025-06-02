@@ -30,6 +30,7 @@ import {
 import { Icon } from "@iconify/react";
 import { Supplier } from "../../types/pos";
 import { SupplierService } from "../../services/database-factory";
+import { formatCurrency } from "../../utils/currency";
 
 // Mock data for demonstration
 const mockSuppliers: Supplier[] = [
@@ -182,10 +183,6 @@ export const SuppliersPage: React.FC = () => {
     } catch (error) {
       console.error("Failed to delete supplier:", error);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString("en-IN")}`;
   };
 
   const getStatusColor = (status: string) => {

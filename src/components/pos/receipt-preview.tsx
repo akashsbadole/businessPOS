@@ -1,5 +1,13 @@
 import React from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Divider } from "@heroui/react";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Divider,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { CartItem } from "../../types/pos";
 
@@ -24,23 +32,23 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   discount,
   total,
   paymentMethod,
-  invoiceNumber
+  invoiceNumber,
 }) => {
   const currentDate = new Date().toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",
-    year: "numeric"
+    year: "numeric",
   });
-  
+
   const currentTime = new Date().toLocaleTimeString("en-IN", {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
   });
-  
+
   const handlePrint = () => {
     // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    
+    const printWindow = window.open("", "_blank");
+
     if (printWindow) {
       // Add the receipt content to the new window
       printWindow.document.write(`
@@ -107,7 +115,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
         </head>
         <body>
           <div class="text-center mb-4">
-            <h3 class="font-bold">SHARMA GENERAL STORE</h3>
+            <h3 class="font-bold">Akash Badole</h3>
             <p>123, Main Road, Andheri East</p>
             <p>Mumbai, Maharashtra - 400069</p>
             <p>GSTIN: 27AADCB2230M1ZT</p>
@@ -137,14 +145,20 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
               </tr>
             </thead>
             <tbody>
-              ${items.map(item => `
+              ${items
+                .map(
+                  (item) => `
                 <tr>
                   <td>${item.name}</td>
                   <td class="text-right">${item.quantity}</td>
                   <td class="text-right">${item.price.toFixed(2)}</td>
-                  <td class="text-right">${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="text-right">${(item.price * item.quantity).toFixed(
+                    2
+                  )}</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
           
@@ -170,12 +184,16 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
             <span>₹${(gstAmount / 2).toFixed(2)}</span>
           </div>
           
-          ${discount > 0 ? `
+          ${
+            discount > 0
+              ? `
           <div class="flex justify-between">
             <span>Discount:</span>
             <span>-₹${discount.toFixed(2)}</span>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
           
           <div class="flex justify-between font-bold mt-2">
             <span>Total:</span>
@@ -195,7 +213,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
         </body>
         </html>
       `);
-      
+
       // Print and close the window
       printWindow.document.close();
       printWindow.focus();
@@ -209,17 +227,19 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">Receipt Preview</ModalHeader>
+            <ModalHeader className="flex flex-col gap-1">
+              Receipt Preview
+            </ModalHeader>
             <ModalBody>
               <div className="bg-white p-6 font-mono text-sm">
                 <div className="text-center mb-4">
-                  <h3 className="font-bold text-base">SHARMA GENERAL STORE</h3>
+                  <h3 className="font-bold text-base">Akash Badole</h3>
                   <p>123, Main Road, Andheri East</p>
                   <p>Mumbai, Maharashtra - 400069</p>
                   <p>GSTIN: 27AADCB2230M1ZT</p>
                   <p>Phone: +91 9876543210</p>
                 </div>
-                
+
                 <div className="flex justify-between mb-4">
                   <div>
                     <p>Invoice: {invoiceNumber}</p>
@@ -230,9 +250,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                     <p>Cashier: Raj Kumar</p>
                   </div>
                 </div>
-                
+
                 <Divider className="my-2" />
-                
+
                 <div className="mb-2">
                   <div className="flex justify-between font-bold">
                     <span className="w-1/2">Item</span>
@@ -241,56 +261,60 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                     <span className="w-1/6 text-right">Amount</span>
                   </div>
                 </div>
-                
+
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between mb-1">
                     <span className="w-1/2 truncate">{item.name}</span>
                     <span className="w-1/6 text-right">{item.quantity}</span>
-                    <span className="w-1/6 text-right">{item.price.toFixed(2)}</span>
-                    <span className="w-1/6 text-right">{(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="w-1/6 text-right">
+                      {item.price.toFixed(2)}
+                    </span>
+                    <span className="w-1/6 text-right">
+                      {(item.price * item.quantity).toFixed(2)}
+                    </span>
                   </div>
                 ))}
-                
+
                 <Divider className="my-2" />
-                
+
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span>GST (18%):</span>
                   <span>₹{gstAmount.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span>CGST (9%):</span>
                   <span>₹{(gstAmount / 2).toFixed(2)}</span>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span>SGST (9%):</span>
                   <span>₹{(gstAmount / 2).toFixed(2)}</span>
                 </div>
-                
+
                 {discount > 0 && (
                   <div className="flex justify-between">
                     <span>Discount:</span>
                     <span>-₹{discount.toFixed(2)}</span>
                   </div>
                 )}
-                
+
                 <div className="flex justify-between font-bold mt-2">
                   <span>Total:</span>
                   <span>₹{total.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="mt-2">
                   <p>Payment Method: {paymentMethod.toUpperCase()}</p>
                 </div>
-                
+
                 <Divider className="my-2" />
-                
+
                 <div className="text-center mt-4">
                   <p>Thank you for shopping with us!</p>
                   <p className="text-xs mt-1">Visit us again</p>
@@ -301,8 +325,8 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
               <Button variant="flat" onPress={onClose}>
                 Close
               </Button>
-              <Button 
-                color="primary" 
+              <Button
+                color="primary"
                 startContent={<Icon icon="lucide:printer" />}
                 onPress={handlePrint}
               >
