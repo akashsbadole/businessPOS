@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  height: calc(100vh - 64px);
+}
+
+@media (max-width: 1024px) {
+  .pos-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.category-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.category-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.offline-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Thermal printer styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #invoice-print, #invoice-print * {
+    visibility: visible;
+  }
+  
+  #invoice-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm; /* Standard thermal receipt width */
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.2;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
