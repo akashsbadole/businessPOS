@@ -1,7 +1,20 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Navbar, NavbarContent, NavbarItem, NavbarBrand, Button, Badge, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Avatar } from "@heroui/react";
+import {
+  Navbar,
+  NavbarContent,
+  NavbarItem,
+  NavbarBrand,
+  Button,
+  Badge,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Avatar,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useAuth } from "../contexts/auth-context";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -9,6 +22,7 @@ interface MainLayoutProps {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [isOffline, setIsOffline] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,33 +39,58 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, []);
 
   const navItems = [
-    { name: "POS", path: "/", icon: "lucide:shopping-cart" },
+    { name: "Dashboard", path: "/", icon: "lucide:layout-dashboard" },
+    { name: "POS", path: "/pos", icon: "lucide:shopping-cart" },
     { name: "Inventory", path: "/inventory", icon: "lucide:package" },
     { name: "Customers", path: "/customers", icon: "lucide:users" },
+    { name: "Suppliers", path: "/suppliers", icon: "lucide:truck" },
+    {
+      name: "Purchase Orders",
+      path: "/purchase-orders",
+      icon: "lucide:clipboard-list",
+    },
+    {
+      name: "Invoice Templates",
+      path: "/invoice-templates",
+      icon: "lucide:file-text",
+    },
     { name: "Reports", path: "/reports", icon: "lucide:bar-chart" },
     { name: "Settings", path: "/settings", icon: "lucide:settings" },
+    { name: "Status", path: "/status", icon: "lucide:activity" },
   ];
+
+  // Debug: Log current location
+  React.useEffect(() => {
+    console.log("Current route:", location.pathname);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-content2">
       <Navbar isBordered maxWidth="2xl">
         <NavbarBrand>
           <div className="flex items-center gap-2">
-            <Icon icon="lucide:shopping-bag" className="text-primary text-2xl" />
+            <Icon
+              icon="lucide:shopping-bag"
+              className="text-primary text-2xl"
+            />
             <p className="font-bold text-inherit">VyaparPOS</p>
           </div>
         </NavbarBrand>
 
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
           {navItems.map((item) => (
-            <NavbarItem key={item.path} isActive={location.pathname === item.path}>
-              <Link 
+            <NavbarItem
+              key={item.path}
+              isActive={location.pathname === item.path}
+            >
+              <Link
                 to={item.path}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
-                  location.pathname === item.path 
-                    ? "text-primary font-medium" 
+                  location.pathname === item.path
+                    ? "text-primary font-medium"
                     : "text-default-600 hover:text-primary"
                 }`}
+                onClick={() => console.log(`Navigating to: ${item.path}`)}
               >
                 <Icon icon={item.icon} className="text-lg" />
                 <span>{item.name}</span>
@@ -62,13 +101,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
         <NavbarContent justify="end">
           {isOffline && (
-            <Badge content="" color="danger" shape="circle" className="offline-indicator">
+            <Badge
+              content=""
+              color="danger"
+              shape="circle"
+              className="offline-indicator"
+            >
               <Button isIconOnly variant="light" radius="full">
                 <Icon icon="lucide:wifi-off" className="text-danger" />
               </Button>
             </Badge>
           )}
-          
+
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <Avatar
@@ -81,10 +125,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 src="https://img.heroui.chat/image/avatar?w=150&h=150&u=1"
               />
             </DropdownTrigger>
-            <DropdownMenu aria-label="Profile Actions" variant="flat">
+            <DropdownMenu
+              aria-label="Profile Actions"
+              variant="flat"
+              onAction={(key) => {
+                if (key === "logout") {
+                  logout();
+                }
+              }}
+            >
               <DropdownItem key="profile" className="h-14 gap-2">
                 <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold">raj@vyaparpos.com</p>
+                <p className="font-semibold">{user?.email}</p>
+                <p className="text-sm text-default-500 capitalize">
+                  {user?.role}
+                </p>
               </DropdownItem>
               <DropdownItem key="settings">My Settings</DropdownItem>
               <DropdownItem key="help">Help & Feedback</DropdownItem>
@@ -96,9 +151,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </NavbarContent>
       </Navbar>
 
-      <main className="container mx-auto px-4 py-4 max-w-7xl">
-        {children}
-      </main>
+      <main className="container mx-auto px-4 py-4 max-w-7xl">{children}</main>
     </div>
   );
 };

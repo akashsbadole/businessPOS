@@ -2,6 +2,20 @@ import React from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { ToastProvider } from "@heroui/react";
 
+// Import Turso test (will auto-run in development)
+import "./test-turso";
+
+// Import console utilities for warning suppression
+import { suppressKnownWarnings } from "./utils/console-utils";
+
+// Suppress known third-party warnings in development
+if (import.meta.env.NODE_ENV === "development") {
+  suppressKnownWarnings();
+}
+
+// Auth Context
+import { AuthProvider, useAuth } from "./contexts/auth-context";
+
 // Layouts
 import { MainLayout } from "./layouts/main-layout";
 
@@ -12,30 +26,80 @@ import { CustomersPage } from "./pages/customers";
 import { ReportsPage } from "./pages/reports";
 import { SettingsPage } from "./pages/settings";
 import { LoginPage } from "./pages/login";
+import { DashboardPage } from "./pages/dashboard";
+import { SuppliersPage } from "./pages/suppliers";
+import { PurchaseOrdersPage } from "./pages/purchase-orders";
+import { StatusPage } from "./pages/status";
+import { InvoiceTemplatesPage } from "./pages/invoice-templates";
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(true);
+const AppContent: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage />;
   }
+
+  return (
+    <MainLayout>
+      <Switch>
+        <Route exact path="/">
+          <DashboardPage />
+        </Route>
+        <Route path="/pos">
+          <POSPage />
+        </Route>
+        <Route path="/inventory">
+          <InventoryPage />
+        </Route>
+        <Route path="/customers">
+          <CustomersPage />
+        </Route>
+        <Route path="/suppliers">
+          <SuppliersPage />
+        </Route>
+        <Route path="/purchase-orders">
+          <PurchaseOrdersPage />
+        </Route>
+        <Route path="/invoice-templates">
+          <InvoiceTemplatesPage />
+        </Route>
+        <Route path="/reports">
+          <ReportsPage />
+        </Route>
+        <Route path="/settings">
+          <SettingsPage />
+        </Route>
+        <Route path="/status">
+          <StatusPage />
+        </Route>
+      </Switch>
+    </MainLayout>
+  );
+};
+
+export default function App() {
+  // Debug: Log when app loads
+  React.useEffect(() => {
+    console.log("App loaded successfully");
+  }, []);
 
   return (
     <Router>
       <ToastProvider />
-      <MainLayout>
-        <Switch>
-          <Route exact path="/" component={POSPage} />
-          <Route path="/inventory" component={InventoryPage} />
-          <Route path="/customers" component={CustomersPage} />
-          <Route path="/reports" component={ReportsPage} />
-          <Route path="/settings" component={SettingsPage} />
-        </Switch>
-      </MainLayout>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }

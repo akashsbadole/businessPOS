@@ -1,30 +1,70 @@
 import React from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Chip, Pagination, Card, Avatar } from "@heroui/react";
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Chip,
+  Pagination,
+  Card,
+  Avatar,
+  Spinner,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { sampleCustomers } from "../../data/sample-data";
+import { Customer } from "../../types/pos";
+import { CustomerService } from "../../services/database-factory";
 
 export const CustomersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selectedStatus, setSelectedStatus] = React.useState<string>("all");
-  
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   const rowsPerPage = 10;
 
+  // Load customers from database
+  React.useEffect(() => {
+    const loadCustomers = async () => {
+      setIsLoading(true);
+      try {
+        const customersData = await CustomerService.getAll();
+        setCustomers(customersData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading customers:", error);
+        setIsLoading(false);
+      }
+    };
+
+    loadCustomers();
+  }, []);
+
   const filteredCustomers = React.useMemo(() => {
-    return sampleCustomers.filter(customer => {
-      const matchesSearch = 
+    return customers.filter((customer) => {
+      const matchesSearch =
         customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         customer.phone.includes(searchQuery) ||
-        customer.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = selectedStatus === "all" || customer.status === selectedStatus;
-      
+        (customer.email &&
+          customer.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesStatus =
+        selectedStatus === "all" || customer.status === selectedStatus;
+
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, selectedStatus]);
+  }, [searchQuery, selectedStatus, customers]);
 
   const pages = Math.ceil(filteredCustomers.length / rowsPerPage);
-  
+
   const paginatedCustomers = React.useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
@@ -37,10 +77,7 @@ export const CustomersPage: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Customer Management</h1>
-        <Button 
-          color="primary" 
-          startContent={<Icon icon="lucide:plus" />}
-        >
+        <Button color="primary" startContent={<Icon icon="lucide:plus" />}>
           Add Customer
         </Button>
       </div>
@@ -56,19 +93,22 @@ export const CustomersPage: React.FC = () => {
               isClearable
               className="flex-1"
             />
-            
+
             <Dropdown>
               <DropdownTrigger>
-                <Button 
-                  variant="bordered" 
+                <Button
+                  variant="bordered"
                   endContent={<Icon icon="lucide:chevron-down" />}
                 >
-                  {selectedStatus === "all" ? "All Statuses" : selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)}
+                  {selectedStatus === "all"
+                    ? "All Statuses"
+                    : selectedStatus.charAt(0).toUpperCase() +
+                      selectedStatus.slice(1)}
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu 
-                aria-label="Statuses" 
-                selectionMode="single" 
+              <DropdownMenu
+                aria-label="Statuses"
+                selectionMode="single"
                 selectedKeys={[selectedStatus]}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
@@ -77,28 +117,31 @@ export const CustomersPage: React.FC = () => {
               >
                 {statuses.map((status) => (
                   <DropdownItem key={status}>
-                    {status === "all" ? "All Statuses" : status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status === "all"
+                      ? "All Statuses"
+                      : status.charAt(0).toUpperCase() + status.slice(1)}
                   </DropdownItem>
                 ))}
               </DropdownMenu>
             </Dropdown>
-            
-            <Button 
-              color="default" 
+
+            <Button
+              color="default"
               variant="bordered"
               startContent={<Icon icon="lucide:filter" />}
             >
               Filters
             </Button>
           </div>
-          
+
           <div className="flex justify-between items-center">
             <p className="text-default-500 text-sm">
-              Showing {paginatedCustomers.length} of {filteredCustomers.length} customers
+              Showing {paginatedCustomers.length} of {filteredCustomers.length}{" "}
+              customers
             </p>
-            <Button 
-              size="sm" 
-              variant="flat" 
+            <Button
+              size="sm"
+              variant="flat"
               startContent={<Icon icon="lucide:download" />}
             >
               Export
@@ -108,8 +151,8 @@ export const CustomersPage: React.FC = () => {
       </Card>
 
       <Card>
-        <Table 
-          removeWrapper 
+        <Table
+          removeWrapper
           aria-label="Customers table"
           bottomContent={
             pages > 0 ? (
@@ -136,14 +179,18 @@ export const CustomersPage: React.FC = () => {
             <TableColumn>STATUS</TableColumn>
             <TableColumn>ACTIONS</TableColumn>
           </TableHeader>
-          <TableBody emptyContent="No customers found">
+          <TableBody
+            emptyContent={isLoading ? <Spinner /> : "No customers found"}
+            isLoading={isLoading}
+            loadingContent={<Spinner />}
+          >
             {paginatedCustomers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar 
-                      name={customer.name} 
-                      src={`https://img.heroui.chat/image/avatar?w=40&h=40&u=${customer.id}`} 
+                    <Avatar
+                      name={customer.name}
+                      src={`https://img.heroui.chat/image/avatar?w=40&h=40&u=${customer.id}`}
                     />
                     <span className="font-medium">{customer.name}</span>
                   </div>
@@ -153,12 +200,13 @@ export const CustomersPage: React.FC = () => {
                 <TableCell>{customer.totalOrders}</TableCell>
                 <TableCell>₹{customer.totalSpent.toFixed(2)}</TableCell>
                 <TableCell>
-                  <Chip 
-                    size="sm" 
-                    color={customer.status === "active" ? "success" : "danger"} 
+                  <Chip
+                    size="sm"
+                    color={customer.status === "active" ? "success" : "danger"}
                     variant="flat"
                   >
-                    {customer.status.charAt(0).toUpperCase() + customer.status.slice(1)}
+                    {customer.status.charAt(0).toUpperCase() +
+                      customer.status.slice(1)}
                   </Chip>
                 </TableCell>
                 <TableCell>
