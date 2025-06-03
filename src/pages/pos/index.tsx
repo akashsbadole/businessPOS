@@ -1,13 +1,9 @@
 import React from "react";
-import { addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductCatalog } from "../../components/pos/product-catalog";
+import { ProductSearchModal } from "../../components/pos/product-search-modal";
 import { Product, Customer } from "../../types/pos";
-import {
-  ProductService,
-  CustomerService,
-  InvoiceService,
-} from "../../services/database-factory";
+import { usePOSStore } from "../../stores/pos-store";
 import {
   Button,
   Input,
@@ -25,28 +21,43 @@ import {
   ModalFooter,
   Select,
   SelectItem,
+  Kbd,
 } from "@heroui/react";
 import { InvoiceView } from "../../components/pos/invoice-view";
 
 export const POSPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const [searchQuery, setSearchQuery] = React.useState("");
 
-  const [invoiceNumber, setInvoiceNumber] = React.useState(
-    "INV-" +
-      new Date().toISOString().slice(2, 10).replace(/-/g, "") +
-      "-" +
-      Math.floor(Math.random() * 1000)
-        .toString()
-        .padStart(3, "0")
-  );
+  // Zustand store
+  const {
+    cartItems,
+    selectedCustomer,
+    searchQuery,
+    isProductSearchOpen,
+    invoiceNumber,
+    paymentMode,
+    amountReceived,
+    roundOff,
+    isLoading,
+    showInvoiceView,
+    currentTransaction,
+    addToCart,
+    updateCartItemQuantity,
+    removeFromCart,
+    clearCart,
+    setSearchQuery,
+    openProductSearch,
+    closeProductSearch,
+    setSelectedCustomer,
+    setPaymentMode,
+    setAmountReceived,
+    setRoundOff,
+    generateInvoiceNumber,
+    processCheckout,
+    setShowInvoiceView,
+  } = usePOSStore();
 
-  const [roundOff, setRoundOff] = React.useState(0);
-  const [paymentMode, setPaymentMode] = React.useState("Cash");
-  const [amountReceived, setAmountReceived] = React.useState("0.00");
-  const [billNumber, setBillNumber] = React.useState("10");
-  const [showInvoiceView, setShowInvoiceView] = React.useState(false);
-  const [selectedCustomer, setSelectedCustomer] = React.useState("");
+  // Local state for non-store data
   const [products, setProducts] = React.useState<Product[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [filteredProducts, setFilteredProducts] = React.useState<Product[]>([]);
@@ -54,7 +65,6 @@ export const POSPage: React.FC = () => {
   const [filteredCustomers, setFilteredCustomers] = React.useState<Customer[]>(
     []
   );
-  const [isLoading, setIsLoading] = React.useState(true);
   const [showAddCustomer, setShowAddCustomer] = React.useState(false);
   const [newCustomer, setNewCustomer] = React.useState({
     name: "",
@@ -62,6 +72,33 @@ export const POSPage: React.FC = () => {
     email: "",
     address: "",
   });
+
+  // Calculate totals from cart items
+  const subTotal = React.useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [cartItems]);
+
+  const itemDiscount = React.useMemo(() => {
+    return cartItems.reduce(
+      (sum, item) => sum + (item.discount || 0) * item.quantity,
+      0
+    );
+  }, [cartItems]);
+
+  const itemTax = React.useMemo(() => {
+    return cartItems.reduce(
+      (sum, item) => sum + (item.taxAmount || 0) * item.quantity,
+      0
+    );
+  }, [cartItems]);
+
+  const totalAmount = React.useMemo(() => {
+    return subTotal - itemDiscount + itemTax + roundOff;
+  }, [subTotal, itemDiscount, itemTax, roundOff]);
+
+  const calculateChange = () => {
+    return Math.max(0, amountReceived - totalAmount);
+  };
 
   const shortcutKeys = {
     newBill: "Ctrl+T",
@@ -75,37 +112,84 @@ export const POSPage: React.FC = () => {
     partialPay: "Ctrl+B",
     multiPay: "Ctrl+M",
     saveAndPrint: "Ctrl+P",
+    searchProduct: "Ctrl+F",
   };
 
-  // Load products and customers from database
+  // Initialize invoice number on mount
   React.useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        // Load products
-        const productsData = await ProductService.getAll();
-        setProducts(productsData);
-        setFilteredProducts(productsData);
+    if (!invoiceNumber) {
+      generateInvoiceNumber();
+    }
+  }, [invoiceNumber, generateInvoiceNumber]);
 
-        // Load customers
-        const customersData = await CustomerService.getAll();
-        setCustomers(customersData);
-        setFilteredCustomers(customersData);
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        addToast({
-          title: "Error loading data",
-          description:
-            "Failed to load products and customers. Please try again.",
-          severity: "danger",
-        });
-        setIsLoading(false);
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === "f") {
+        event.preventDefault();
+        openProductSearch();
+      }
+      if (event.key === "Escape" && isProductSearchOpen) {
+        closeProductSearch();
       }
     };
 
-    loadData();
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isProductSearchOpen, openProductSearch, closeProductSearch]);
+
+  // Load sample data for now
+  React.useEffect(() => {
+    // Sample products
+    const sampleProducts: Product[] = [
+      {
+        id: "1",
+        name: "Sample Product 1",
+        price: 100,
+        stock: 50,
+        category: "Electronics",
+        barcode: "123456789",
+        hsn: "8517",
+        taxRate: 18,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "2",
+        name: "Sample Product 2",
+        price: 200,
+        stock: 30,
+        category: "Clothing",
+        barcode: "987654321",
+        hsn: "6109",
+        taxRate: 12,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    // Sample customers
+    const sampleCustomers: Customer[] = [
+      {
+        id: "1",
+        name: "John Doe",
+        phone: "9876543210",
+        email: "john@example.com",
+        address: "123 Main St",
+        totalOrders: 5,
+        totalSpent: 1000,
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    setProducts(sampleProducts);
+    setFilteredProducts(sampleProducts);
+    setCustomers(sampleCustomers);
+    setFilteredCustomers(sampleCustomers);
   }, []);
 
   // Search products
@@ -142,294 +226,34 @@ export const POSPage: React.FC = () => {
     }
   }, [searchCustomerQuery, customers]);
 
-  // Sample products based on the image
-  const sampleBillItems = [
-    {
-      id: "p1",
-      itemCode: "38671572297",
-      name: "Basmati Rice, 1Kg",
-      price: 200.0,
-      quantity: 1.0,
-      discount: 20.0,
-      taxApplied: 0.0,
-      total: 180.0,
-      hsn: "1006",
-    },
-    {
-      id: "p2",
-      itemCode: "38645371846",
-      name: "Fortune Oil, 1L",
-      price: 113.0,
-      quantity: 1.0,
-      discount: 13.56,
-      taxApplied: 4.97,
-      total: 104.41,
-      hsn: "1512",
-    },
-    {
-      id: "p3",
-      itemCode: "38658999396",
-      name: "Surf Excel Powder, 3Kg",
-      price: 555.0,
-      quantity: 1.0,
-      discount: 66.6,
-      taxApplied: 0.0,
-      total: 488.4,
-      hsn: "3402",
-    },
-    {
-      id: "p4",
-      itemCode: "38678387182",
-      name: "Maggi, 4pack",
-      price: 300.0,
-      quantity: 1.0,
-      discount: 36.0,
-      taxApplied: 13.2,
-      total: 277.2,
-      hsn: "1902",
-    },
-  ];
-
-  const [billItems, setBillItems] = React.useState(sampleBillItems);
-
-  // Calculate bill totals
-  const subTotal = billItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const itemDiscount = billItems.reduce((sum, item) => sum + item.discount, 0);
-  const itemTax = billItems.reduce((sum, item) => sum + item.taxApplied, 0);
-
-  // Update the roundOff state with the fixed value from the image
-  React.useEffect(() => {
-    setRoundOff(-0.01);
-  }, []);
-
-  const totalAmount =
-    billItems.reduce((sum, item) => sum + item.total, 0) + roundOff;
-
-  React.useEffect(() => {
-    setAmountReceived(totalAmount.toFixed(2));
-  }, [totalAmount]);
-
-  const handleAddToCart = (product: Product) => {
-    if (product.stock === 0) {
-      addToast({
-        title: "Out of stock",
-        description: `${product.name} is currently out of stock.`,
-        severity: "danger",
-      });
+  const handleAddCustomer = () => {
+    if (!newCustomer.name.trim() || !newCustomer.phone.trim()) {
+      alert("Name and phone are required fields.");
       return;
     }
 
-    // Convert Product to CartItem format
-    const cartItem = {
-      id: product.id,
-      itemCode: product.barcode || product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      discount: 0,
-      taxApplied: (product.price * (product.taxRate || 18)) / 100,
-      total: product.price + (product.price * (product.taxRate || 18)) / 100,
-      hsn: product.hsn || "",
+    const createdCustomer: Customer = {
+      id: `cust_${Date.now()}`,
+      ...newCustomer,
+      totalOrders: 0,
+      totalSpent: 0,
+      status: "active" as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
-    setBillItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+    // Update customers list
+    setCustomers((prev) => [...prev, createdCustomer]);
 
-      if (existingItem) {
-        return prevItems.map((item) =>
-          item.id === product.id
-            ? {
-                ...item,
-                quantity: item.quantity + 1,
-                total:
-                  (item.quantity + 1) * item.price +
-                  item.taxApplied * (item.quantity + 1),
-              }
-            : item
-        );
-      } else {
-        return [...prevItems, cartItem];
-      }
-    });
+    // Select the new customer automatically
+    setSelectedCustomer(createdCustomer);
+    setSearchCustomerQuery("");
 
-    addToast({
-      title: "Item added",
-      description: `${product.name} added to cart.`,
-      severity: "success",
-    });
-  };
+    // Reset form and close modal
+    setNewCustomer({ name: "", phone: "", email: "", address: "" });
+    setShowAddCustomer(false);
 
-  const handleUpdateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
-      handleRemoveItem(id);
-      return;
-    }
-
-    const product = products.find((p) => p.id === id);
-    if (product && quantity > product.stock) {
-      addToast({
-        title: "Insufficient stock",
-        description: `Only ${product.stock} items available in stock.`,
-        severity: "warning",
-      });
-      return;
-    }
-
-    setBillItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id === id) {
-          const newTotal = item.price * quantity + item.taxApplied * quantity;
-          return { ...item, quantity, total: parseFloat(newTotal.toFixed(2)) };
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setBillItems((prevItems) => prevItems.filter((item) => item.id !== id));
-    addToast({
-      title: "Item removed",
-      description: "Item has been removed from cart.",
-      severity: "success",
-    });
-  };
-
-  const handleClearCart = () => {
-    setBillItems([]);
-    addToast({
-      title: "Cart cleared",
-      description: "All items have been removed from cart.",
-      severity: "success",
-    });
-  };
-
-  const handleNewBill = () => {
-    setBillItems([]);
-    setBillNumber((parseInt(billNumber) + 1).toString());
-  };
-
-  const handleSaveAndPrint = async () => {
-    if (billItems.length === 0) {
-      addToast({
-        title: "No items",
-        description: "Please add items to the cart before saving.",
-        severity: "warning",
-      });
-      return;
-    }
-
-    try {
-      // Create invoice data
-      const invoiceData = {
-        invoiceNumber,
-        customer:
-          selectedCustomer && selectedCustomer.trim() ? selectedCustomer : null,
-        date: new Date(),
-        items: billItems,
-        subtotal: subTotal,
-        discount: itemDiscount,
-        taxAmount: itemTax,
-        roundOff,
-        amount: totalAmount,
-        paymentMethod: paymentMode,
-        amountReceived: parseFloat(amountReceived) || 0,
-        change: calculateChange(),
-        status: "completed" as const,
-      };
-
-      // Save invoice to database
-      await InvoiceService.createWithItems(invoiceData, billItems);
-
-      addToast({
-        title: "Invoice saved",
-        description: `Invoice ${invoiceNumber} has been saved successfully.`,
-        severity: "success",
-      });
-
-      // Show invoice view for printing
-      setShowInvoiceView(true);
-
-      // Clear the bill after successful save
-      setBillItems([]);
-      setSelectedCustomer("");
-      setSearchCustomerQuery("");
-
-      // Generate new invoice number
-      setInvoiceNumber(
-        "INV-" +
-          new Date().toISOString().slice(2, 10).replace(/-/g, "") +
-          "-" +
-          Math.floor(Math.random() * 1000)
-            .toString()
-            .padStart(3, "0")
-      );
-    } catch (error) {
-      console.error("Error saving invoice:", error);
-      addToast({
-        title: "Error saving invoice",
-        description: "Failed to save the invoice. Please try again.",
-        severity: "danger",
-      });
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const calculateChange = () => {
-    const received = parseFloat(amountReceived);
-    return received > totalAmount ? received - totalAmount : 0;
-  };
-
-  const handleAddCustomer = async () => {
-    if (!newCustomer.name.trim() || !newCustomer.phone.trim()) {
-      addToast({
-        title: "Validation Error",
-        description: "Name and phone are required fields.",
-        severity: "warning",
-      });
-      return;
-    }
-
-    try {
-      const customerData = {
-        ...newCustomer,
-        totalOrders: 0,
-        totalSpent: 0,
-        status: "active" as const,
-      };
-
-      const createdCustomer = await CustomerService.create(customerData);
-
-      // Update customers list
-      setCustomers((prev) => [...prev, createdCustomer]);
-
-      // Select the new customer automatically
-      setSelectedCustomer(createdCustomer.id);
-      setSearchCustomerQuery("");
-
-      // Reset form and close modal
-      setNewCustomer({ name: "", phone: "", email: "", address: "" });
-      setShowAddCustomer(false);
-
-      addToast({
-        title: "Customer Added",
-        description: `${createdCustomer.name} has been added successfully.`,
-        severity: "success",
-      });
-    } catch (error) {
-      console.error("Error adding customer:", error);
-      addToast({
-        title: "Error",
-        description: "Failed to add customer. Please try again.",
-        severity: "danger",
-      });
-    }
+    alert(`${createdCustomer.name} has been added successfully.`);
   };
 
   return (
@@ -487,9 +311,16 @@ export const POSPage: React.FC = () => {
           size="sm"
           value={searchQuery}
           onValueChange={setSearchQuery}
+          onFocus={openProductSearch}
           endContent={
             <div className="flex gap-1">
-              <Button isIconOnly variant="light" size="sm">
+              <Kbd className="hidden sm:inline-block">Ctrl+F</Kbd>
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={openProductSearch}
+              >
                 <Icon icon="lucide:search" />
               </Button>
               <Button
@@ -504,15 +335,15 @@ export const POSPage: React.FC = () => {
             </div>
           }
         />
-        {/* Product search results */}
-        {searchQuery && filteredProducts.length > 0 && (
+        {/* Quick search results */}
+        {searchQuery && filteredProducts.length > 0 && !isProductSearchOpen && (
           <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
-            {filteredProducts.slice(0, 10).map((product) => (
+            {filteredProducts.slice(0, 5).map((product) => (
               <div
                 key={product.id}
                 className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
                 onClick={() => {
-                  handleAddToCart(product);
+                  addToCart(product);
                   setSearchQuery("");
                 }}
               >
@@ -532,6 +363,16 @@ export const POSPage: React.FC = () => {
                 </div>
               </div>
             ))}
+            <div className="p-2 text-center border-t bg-gray-50">
+              <Button
+                size="sm"
+                variant="flat"
+                onPress={openProductSearch}
+                startContent={<Icon icon="lucide:search" />}
+              >
+                Advanced Search (Ctrl+F)
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -564,13 +405,13 @@ export const POSPage: React.FC = () => {
               <TableColumn className="bg-gray-50 text-xs">TOTAL(₹)</TableColumn>
             </TableHeader>
             <TableBody>
-              {billItems.map((item, index) => (
+              {cartItems.map((item, index) => (
                 <TableRow
                   key={item.id}
                   className={index % 2 === 0 ? "bg-white" : "bg-blue-50"}
                 >
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.itemCode}</TableCell>
+                  <TableCell>{item.barcode || item.id}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-between">
                       <span className="flex-1">{item.name}</span>
@@ -579,7 +420,7 @@ export const POSPage: React.FC = () => {
                         size="sm"
                         variant="light"
                         color="danger"
-                        onPress={() => handleRemoveItem(item.id)}
+                        onPress={() => removeFromCart(item.id)}
                         className="ml-2"
                       >
                         <Icon icon="lucide:trash-2" width={14} height={14} />
@@ -593,7 +434,7 @@ export const POSPage: React.FC = () => {
                         size="sm"
                         variant="light"
                         onPress={() =>
-                          handleUpdateQuantity(item.id, item.quantity - 1)
+                          updateCartItemQuantity(item.id, item.quantity - 1)
                         }
                         disabled={item.quantity <= 1}
                       >
@@ -605,7 +446,7 @@ export const POSPage: React.FC = () => {
                         value={item.quantity.toString()}
                         onValueChange={(value) => {
                           const qty = parseFloat(value) || 1;
-                          handleUpdateQuantity(item.id, qty);
+                          updateCartItemQuantity(item.id, qty);
                         }}
                         className="w-16 text-center"
                         min="1"
@@ -616,7 +457,7 @@ export const POSPage: React.FC = () => {
                         size="sm"
                         variant="light"
                         onPress={() =>
-                          handleUpdateQuantity(item.id, item.quantity + 1)
+                          updateCartItemQuantity(item.id, item.quantity + 1)
                         }
                       >
                         <Icon icon="lucide:plus" width={12} height={12} />
@@ -625,8 +466,8 @@ export const POSPage: React.FC = () => {
                   </TableCell>
                   <TableCell>-</TableCell>
                   <TableCell>{item.price.toFixed(2)}</TableCell>
-                  <TableCell>{item.discount.toFixed(2)}</TableCell>
-                  <TableCell>{item.taxApplied.toFixed(2)}</TableCell>
+                  <TableCell>{(item.discount || 0).toFixed(2)}</TableCell>
+                  <TableCell>{(item.taxAmount || 0).toFixed(2)}</TableCell>
                   <TableCell className="font-medium">
                     {item.total.toFixed(2)}
                   </TableCell>
@@ -658,7 +499,7 @@ export const POSPage: React.FC = () => {
                       key={customer.id}
                       className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
                       onClick={() => {
-                        setSelectedCustomer(customer.id);
+                        setSelectedCustomer(customer);
                         setSearchCustomerQuery("");
                       }}
                     >
@@ -684,10 +525,10 @@ export const POSPage: React.FC = () => {
                       Selected Customer:
                     </div>
                     <div className="text-sm text-gray-600">
-                      {customers.find((c) => c.id === selectedCustomer)?.name}
+                      {selectedCustomer?.name}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {customers.find((c) => c.id === selectedCustomer)?.phone}
+                      {selectedCustomer?.phone}
                     </div>
                   </div>
                   <Button
@@ -695,7 +536,7 @@ export const POSPage: React.FC = () => {
                     size="sm"
                     variant="light"
                     onPress={() => {
-                      setSelectedCustomer("");
+                      setSelectedCustomer(null);
                       setSearchCustomerQuery("");
                     }}
                   >
@@ -720,12 +561,12 @@ export const POSPage: React.FC = () => {
           <div className="p-4 border-b border-gray-200">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-lg font-medium">Bill Details</h2>
-              {billItems.length > 0 && (
+              {cartItems.length > 0 && (
                 <Button
                   size="sm"
                   variant="flat"
                   color="danger"
-                  onPress={handleClearCart}
+                  onPress={clearCart}
                   startContent={
                     <Icon icon="lucide:trash-2" width={14} height={14} />
                   }
@@ -759,8 +600,8 @@ export const POSPage: React.FC = () => {
                 <span className="text-gray-800 font-medium">Total Amount</span>
                 <div className="text-right">
                   <div className="text-xs text-gray-500">
-                    (Items: {billItems.length}, Quantity:{" "}
-                    {billItems.reduce((sum, item) => sum + item.quantity, 0)})
+                    (Items: {cartItems.length}, Quantity:{" "}
+                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)})
                   </div>
                   <div className="font-bold text-lg">
                     ₹ {totalAmount.toFixed(2)}
@@ -781,7 +622,9 @@ export const POSPage: React.FC = () => {
                 <Select
                   size="sm"
                   selectedKeys={[paymentMode]}
-                  onChange={(e) => setPaymentMode(e.target.value)}
+                  onSelectionChange={(keys) =>
+                    setPaymentMode(Array.from(keys)[0] as string)
+                  }
                   className="w-full"
                   aria-label="Payment Mode"
                   label="Payment Mode"
@@ -798,8 +641,10 @@ export const POSPage: React.FC = () => {
                 <Input
                   size="sm"
                   type="number"
-                  value={amountReceived}
-                  onValueChange={setAmountReceived}
+                  value={amountReceived.toString()}
+                  onValueChange={(value) =>
+                    setAmountReceived(parseFloat(value) || 0)
+                  }
                   startContent="₹"
                   className="w-full"
                 />
@@ -818,8 +663,25 @@ export const POSPage: React.FC = () => {
             <Button
               color="success"
               className="w-full py-3 rounded-none"
-              onPress={handleSaveAndPrint}
+              onPress={async () => {
+                const success = await processCheckout();
+                if (success) {
+                  addToast({
+                    title: "Sale completed",
+                    description: "Transaction saved successfully",
+                    severity: "success",
+                  });
+                } else {
+                  addToast({
+                    title: "Error",
+                    description: "Failed to process checkout",
+                    severity: "danger",
+                  });
+                }
+              }}
               startContent={<Icon icon="lucide:printer" />}
+              isDisabled={cartItems.length === 0}
+              isLoading={isLoading}
             >
               Save & Print Bill [{shortcutKeys.saveAndPrint}]
             </Button>
@@ -889,7 +751,7 @@ export const POSPage: React.FC = () => {
                 ) : (
                   <ProductCatalog
                     products={filteredProducts}
-                    onAddToCart={handleAddToCart}
+                    onAddToCart={addToCart}
                   />
                 )}
               </ModalBody>
@@ -902,6 +764,12 @@ export const POSPage: React.FC = () => {
           )}
         </ModalContent>
       </Modal>
+
+      {/* Product Search Modal */}
+      <ProductSearchModal
+        isOpen={isProductSearchOpen}
+        onClose={closeProductSearch}
+      />
 
       {/* Add Customer Modal */}
       <Modal isOpen={showAddCustomer} onOpenChange={setShowAddCustomer}>
@@ -970,15 +838,19 @@ export const POSPage: React.FC = () => {
       <InvoiceView
         isOpen={showInvoiceView}
         onOpenChange={setShowInvoiceView}
-        billItems={billItems}
-        billNumber={billNumber}
+        billItems={cartItems}
+        billNumber={invoiceNumber}
         subTotal={subTotal}
         itemDiscount={itemDiscount}
         itemTax={itemTax}
         roundOff={roundOff}
         totalAmount={totalAmount}
         paymentMode={paymentMode}
-        onPrint={handlePrint}
+        onPrint={() => {
+          // Print functionality
+          window.print();
+          clearCart();
+        }}
       />
     </div>
   );

@@ -17,36 +17,83 @@ import {
 } from "recharts";
 
 // Enhanced XAxis with explicit props to avoid defaultProps warnings
-export const XAxis: React.FC<any> = (props) => (
-  <RechartsXAxis axisLine={true} tickLine={true} type="category" {...props} />
+export const XAxis: React.FC<any> = ({
+  axisLine = true,
+  tickLine = true,
+  type = "category",
+  xAxisId = 0,
+  ...props
+}) => (
+  <RechartsXAxis
+    axisLine={axisLine}
+    tickLine={tickLine}
+    type={type}
+    xAxisId={xAxisId}
+    {...props}
+  />
 );
 
 // Enhanced YAxis with explicit props to avoid defaultProps warnings
-export const YAxis: React.FC<any> = (props) => (
-  <RechartsYAxis axisLine={true} tickLine={true} type="number" {...props} />
+export const YAxis: React.FC<any> = ({
+  axisLine = true,
+  tickLine = true,
+  type = "number",
+  yAxisId = 0,
+  ...props
+}) => (
+  <RechartsYAxis
+    axisLine={axisLine}
+    tickLine={tickLine}
+    type={type}
+    yAxisId={yAxisId}
+    {...props}
+  />
 );
 
 // Enhanced CartesianGrid with explicit props
-export const CartesianGrid: React.FC<any> = (props) => (
-  <RechartsCartesianGrid horizontal={true} vertical={true} {...props} />
+export const CartesianGrid: React.FC<any> = ({
+  horizontal = true,
+  vertical = true,
+  ...props
+}) => (
+  <RechartsCartesianGrid
+    horizontal={horizontal}
+    vertical={vertical}
+    {...props}
+  />
 );
 
 // Enhanced Tooltip with explicit props
-export const Tooltip: React.FC<any> = (props) => (
+export const Tooltip: React.FC<any> = ({
+  active = false,
+  allowEscapeViewBox = { x: false, y: false },
+  animationDuration = 400,
+  animationEasing = "ease",
+  cursor = true,
+  filterNull = true,
+  isAnimationActive = true,
+  offset = 10,
+  separator = ": ",
+  trigger = "hover",
+  useTranslate3d = false,
+  viewBox = { x: 0, y: 0, width: 0, height: 0 },
+  wrapperStyle = {},
+  ...props
+}) => (
   <RechartsTooltip
-    active={false}
-    allowEscapeViewBox={{ x: false, y: false }}
-    animationDuration={400}
-    animationEasing="ease"
-    cursor={true}
-    filterNull={true}
-    isAnimationActive={true}
-    offset={10}
-    separator=": "
-    trigger="hover"
-    useTranslate3d={false}
-    viewBox={{ x: 0, y: 0, width: 0, height: 0 }}
-    wrapperStyle={{}}
+    active={active}
+    allowEscapeViewBox={allowEscapeViewBox}
+    animationDuration={animationDuration}
+    animationEasing={animationEasing}
+    cursor={cursor}
+    filterNull={filterNull}
+    isAnimationActive={isAnimationActive}
+    offset={offset}
+    separator={separator}
+    trigger={trigger}
+    useTranslate3d={useTranslate3d}
+    viewBox={viewBox}
+    wrapperStyle={wrapperStyle}
     {...props}
   />
 );
@@ -82,19 +129,36 @@ export const LineChart: React.FC<any> = (props) => {
 };
 
 // Enhanced Line with explicit props
-export const Line: React.FC<any> = (props) => (
+export const Line: React.FC<any> = ({
+  activeDot = true,
+  connectNulls = false,
+  dot = true,
+  hide = false,
+  isAnimationActive = true,
+  legendType = "line",
+  strokeDasharray = "none",
+  strokeLinecap = "butt",
+  strokeLinejoin = "miter",
+  strokeWidth = 1,
+  type = "linear",
+  xAxisId = 0,
+  yAxisId = 0,
+  ...props
+}) => (
   <RechartsLine
-    activeDot={true}
-    connectNulls={false}
-    dot={true}
-    hide={false}
-    isAnimationActive={true}
-    legendType="line"
-    strokeDasharray="none"
-    strokeLinecap="butt"
-    strokeLinejoin="miter"
-    strokeWidth={1}
-    type="linear"
+    activeDot={activeDot}
+    connectNulls={connectNulls}
+    dot={dot}
+    hide={hide}
+    isAnimationActive={isAnimationActive}
+    legendType={legendType}
+    strokeDasharray={strokeDasharray}
+    strokeLinecap={strokeLinecap}
+    strokeLinejoin={strokeLinejoin}
+    strokeWidth={strokeWidth}
+    type={type}
+    xAxisId={xAxisId}
+    yAxisId={yAxisId}
     {...props}
   />
 );
@@ -119,17 +183,32 @@ export const AreaChart: React.FC<any> = (props) => {
 };
 
 // Enhanced Area with explicit props
-export const Area: React.FC<any> = (props) => (
+export const Area: React.FC<any> = ({
+  activeDot = true,
+  connectNulls = false,
+  dot = false,
+  hide = false,
+  isAnimationActive = true,
+  legendType = "rect",
+  stackId = undefined,
+  strokeWidth = 1,
+  type = "linear",
+  xAxisId = 0,
+  yAxisId = 0,
+  ...props
+}) => (
   <RechartsArea
-    activeDot={true}
-    connectNulls={false}
-    dot={false}
-    hide={false}
-    isAnimationActive={true}
-    legendType="rect"
-    stackId={undefined}
-    strokeWidth={1}
-    type="linear"
+    activeDot={activeDot}
+    connectNulls={connectNulls}
+    dot={dot}
+    hide={hide}
+    isAnimationActive={isAnimationActive}
+    legendType={legendType}
+    stackId={stackId}
+    strokeWidth={strokeWidth}
+    type={type}
+    xAxisId={xAxisId}
+    yAxisId={yAxisId}
     {...props}
   />
 );

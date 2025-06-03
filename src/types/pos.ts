@@ -28,6 +28,7 @@ export interface CartItem extends Product {
   quantity: number;
   discount?: number;
   taxAmount?: number;
+  total: number;
 }
 
 export interface Transaction {
@@ -35,8 +36,11 @@ export interface Transaction {
   invoiceNumber: string;
   date: Date;
   customer: string | null;
-  amount: number;
-  paymentMethod: string;
+  customerId?: string;
+  amount?: number;
+  total: number;
+  paymentMethod?: string;
+  paymentMode?: string;
   status: "completed" | "pending" | "cancelled";
   items?: any[]; // More flexible to accept different item structures
   subtotal?: number;

@@ -15,6 +15,7 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAuth } from "../contexts/auth-context";
+import { useSubscription } from "../contexts/subscription-context";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -23,6 +24,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { subscription, daysRemaining } = useSubscription();
   const [isOffline, setIsOffline] = React.useState(false);
 
   React.useEffect(() => {
@@ -100,6 +102,29 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </NavbarContent>
 
         <NavbarContent justify="end">
+          {/* Subscription Status */}
+          {subscription && daysRemaining <= 7 && (
+            <Badge
+              content={daysRemaining}
+              color={daysRemaining <= 3 ? "danger" : "warning"}
+              shape="circle"
+            >
+              <Button
+                isIconOnly
+                variant="light"
+                radius="full"
+                title={`Subscription expires in ${daysRemaining} days`}
+              >
+                <Icon
+                  icon="lucide:calendar-clock"
+                  className={
+                    daysRemaining <= 3 ? "text-danger" : "text-warning"
+                  }
+                />
+              </Button>
+            </Badge>
+          )}
+
           {isOffline && (
             <Badge
               content=""
@@ -134,12 +159,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 }
               }}
             >
-              <DropdownItem key="profile" className="h-14 gap-2">
+              <DropdownItem key="profile" className="h-20 gap-2">
                 <p className="font-semibold">Signed in as</p>
                 <p className="font-semibold">{user?.email}</p>
                 <p className="text-sm text-default-500 capitalize">
                   {user?.role}
                 </p>
+                {subscription && (
+                  <p className="text-xs text-primary">
+                    {subscription.planType.charAt(0).toUpperCase() +
+                      subscription.planType.slice(1)}{" "}
+                    Plan
+                    {daysRemaining <= 30 && ` • ${daysRemaining} days left`}
+                  </p>
+                )}
               </DropdownItem>
               <DropdownItem key="settings">My Settings</DropdownItem>
               <DropdownItem key="help">Help & Feedback</DropdownItem>

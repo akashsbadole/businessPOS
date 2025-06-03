@@ -9,6 +9,35 @@ import type {
   DashboardStats,
 } from "../types/pos";
 
+// Sanitize values for database insertion
+const sanitizeValue = (value: any): any => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return formatDate(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+
+  if (typeof value === "number") {
+    return isNaN(value) ? 0 : value;
+  }
+
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  return String(value);
+};
+
 // Product Services
 export class TursoProductService {
   static async getAll(): Promise<Product[]> {
@@ -129,19 +158,19 @@ export class TursoProductService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        product.name,
-        product.barcode,
-        product.category,
-        product.price,
-        product.cost,
-        product.stock,
-        product.minStock,
-        product.maxStock,
-        product.unit,
-        product.description,
-        product.hsn,
-        product.taxRate,
-        product.isActive ? 1 : 0,
+        sanitizeValue(product.name),
+        sanitizeValue(product.barcode),
+        sanitizeValue(product.category),
+        sanitizeValue(product.price),
+        sanitizeValue(product.cost),
+        sanitizeValue(product.stock),
+        sanitizeValue(product.minStock),
+        sanitizeValue(product.maxStock),
+        sanitizeValue(product.unit),
+        sanitizeValue(product.description),
+        sanitizeValue(product.hsn),
+        sanitizeValue(product.taxRate),
+        sanitizeValue(product.isActive),
         now,
         now,
       ]
@@ -169,7 +198,7 @@ export class TursoProductService {
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== "id" && key !== "createdAt" && value !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(value);
+        values.push(sanitizeValue(value));
       }
     });
 
@@ -297,17 +326,17 @@ export class TursoCustomerService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        customer.name,
-        customer.phone,
-        customer.email,
-        customer.address,
-        customer.city,
-        customer.state,
-        customer.pincode,
-        customer.gstin,
-        customer.totalOrders,
-        customer.totalSpent,
-        customer.status,
+        sanitizeValue(customer.name),
+        sanitizeValue(customer.phone),
+        sanitizeValue(customer.email),
+        sanitizeValue(customer.address),
+        sanitizeValue(customer.city),
+        sanitizeValue(customer.state),
+        sanitizeValue(customer.pincode),
+        sanitizeValue(customer.gstin),
+        sanitizeValue(customer.totalOrders),
+        sanitizeValue(customer.totalSpent),
+        sanitizeValue(customer.status),
         now,
         now,
       ]
@@ -335,7 +364,7 @@ export class TursoCustomerService {
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== "id" && key !== "createdAt" && value !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(value);
+        values.push(sanitizeValue(value));
       }
     });
 
@@ -445,10 +474,10 @@ export class TursoCategoryService {
       "INSERT INTO categories (id, name, description, sortOrder, isActive, createdAt) VALUES (?, ?, ?, ?, ?, ?)",
       [
         id,
-        category.name,
-        category.description,
-        category.sortOrder,
-        category.isActive ? 1 : 0,
+        sanitizeValue(category.name),
+        sanitizeValue(category.description),
+        sanitizeValue(category.sortOrder),
+        sanitizeValue(category.isActive),
         now,
       ]
     );
@@ -473,7 +502,7 @@ export class TursoCategoryService {
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== "id" && key !== "createdAt" && value !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(value);
+        values.push(sanitizeValue(value));
       }
     });
 
@@ -760,7 +789,7 @@ export class TursoSupplierService {
     Object.entries(updates).forEach(([key, value]) => {
       if (key !== "id" && key !== "createdAt" && value !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(value);
+        values.push(sanitizeValue(value));
       }
     });
 

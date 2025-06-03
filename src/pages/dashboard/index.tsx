@@ -1,8 +1,25 @@
 import React from "react";
-import { Card, CardBody, CardHeader, Button, Chip } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Button,
+  Chip,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Progress,
+  Spinner,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { DashboardStats } from "../../types/pos";
-import { DashboardService } from "../../services/database-factory";
+import { useDashboardStore } from "../../stores/dashboard-store";
 import { DummyDataLoader } from "../../components/admin/dummy-data-loader";
 import { formatCurrency } from "../../utils/currency";
 
@@ -78,24 +95,51 @@ const categoryData = [
 ];
 
 export const DashboardPage: React.FC = () => {
-  const [stats, setStats] = React.useState<DashboardStats>(mockStats);
-  const [timeRange, setTimeRange] = React.useState<"today" | "week" | "month">(
-    "today"
-  );
+  const {
+    stats,
+    isLoading,
+    lastUpdated,
+    isExporting,
+    loadDashboardData,
+    refreshStats,
+    exportSalesReport,
+    exportTransactionReport,
+    exportCustomerReport,
+    exportInventoryReport,
+  } = useDashboardStore();
 
   React.useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const dashboardStats = await DashboardService.getStats();
-        setStats(dashboardStats);
-      } catch (error) {
-        console.error("Failed to load dashboard stats:", error);
-        // Keep using mock stats if database fails
-      }
-    };
+    loadDashboardData();
+  }, [loadDashboardData]);
 
-    loadStats();
-  }, [timeRange]);
+  const handleExport = async (type: string, period?: string) => {
+    try {
+      switch (type) {
+        case "sales":
+          await exportSalesReport(period as any);
+          break;
+        case "transactions":
+          await exportTransactionReport(period as any);
+          break;
+        case "customers":
+          await exportCustomerReport();
+          break;
+        case "inventory":
+          await exportInventoryReport();
+          break;
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  };
+
+  if (isLoading && !stats.totalSales) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner size="lg" label="Loading dashboard data..." />
+      </div>
+    );
+  }
 
   const StatCard: React.FC<{
     title: string;
@@ -145,61 +189,182 @@ export const DashboardPage: React.FC = () => {
           <p className="text-default-600 mt-1">
             Welcome back! Here's what's happening with your store today.
           </p>
+          {lastUpdated && (
+            <p className="text-sm text-default-500 mt-1">
+              Last updated: {lastUpdated.toLocaleString()}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button
-            size="sm"
-            variant={timeRange === "today" ? "solid" : "bordered"}
-            onPress={() => setTimeRange("today")}
+            variant="flat"
+            startContent={<Icon icon="lucide:refresh-cw" />}
+            onPress={refreshStats}
+            isLoading={isLoading}
           >
-            Today
+            Refresh
           </Button>
-          <Button
-            size="sm"
-            variant={timeRange === "week" ? "solid" : "bordered"}
-            onPress={() => setTimeRange("week")}
-          >
-            Week
-          </Button>
-          <Button
-            size="sm"
-            variant={timeRange === "month" ? "solid" : "bordered"}
-            onPress={() => setTimeRange("month")}
-          >
-            Month
-          </Button>
+
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                variant="flat"
+                startContent={<Icon icon="lucide:download" />}
+                isLoading={isExporting}
+              >
+                Export Reports
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Export options">
+              <DropdownItem
+                key="sales-monthly"
+                startContent={<Icon icon="lucide:trending-up" />}
+                onPress={() => handleExport("sales", "monthly")}
+              >
+                Sales Report (Monthly)
+              </DropdownItem>
+              <DropdownItem
+                key="sales-weekly"
+                startContent={<Icon icon="lucide:trending-up" />}
+                onPress={() => handleExport("sales", "weekly")}
+              >
+                Sales Report (Weekly)
+              </DropdownItem>
+              <DropdownItem
+                key="sales-quarterly"
+                startContent={<Icon icon="lucide:trending-up" />}
+                onPress={() => handleExport("sales", "quarterly")}
+              >
+                Sales Report (Quarterly)
+              </DropdownItem>
+              <DropdownItem
+                key="sales-semi-yearly"
+                startContent={<Icon icon="lucide:trending-up" />}
+                onPress={() => handleExport("sales", "semi-yearly")}
+              >
+                Sales Report (Semi-Yearly)
+              </DropdownItem>
+              <DropdownItem
+                key="sales-yearly"
+                startContent={<Icon icon="lucide:trending-up" />}
+                onPress={() => handleExport("sales", "yearly")}
+              >
+                Sales Report (Yearly)
+              </DropdownItem>
+              <DropdownItem
+                key="transactions"
+                startContent={<Icon icon="lucide:receipt" />}
+                onPress={() => handleExport("transactions", "monthly")}
+              >
+                Transaction Report
+              </DropdownItem>
+              <DropdownItem
+                key="customers"
+                startContent={<Icon icon="lucide:users" />}
+                onPress={() => handleExport("customers")}
+              >
+                Customer Report
+              </DropdownItem>
+              <DropdownItem
+                key="inventory"
+                startContent={<Icon icon="lucide:package" />}
+                onPress={() => handleExport("inventory")}
+              >
+                Inventory Report
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Today's Sales"
-          value={formatCurrency(stats.todaySales)}
-          icon="lucide:dollar-sign"
-          color="success"
-          trend={{ value: 12.5, isPositive: true }}
-        />
-        <StatCard
-          title="Transactions"
-          value={stats.todayTransactions}
-          icon="lucide:shopping-cart"
-          color="primary"
-          trend={{ value: 8.2, isPositive: true }}
-        />
-        <StatCard
-          title="Low Stock Items"
-          value={stats.lowStockItems}
-          icon="lucide:alert-triangle"
-          color="warning"
-        />
-        <StatCard
-          title="Total Customers"
-          value={stats.totalCustomers}
-          icon="lucide:users"
-          color="primary"
-          trend={{ value: 5.1, isPositive: true }}
-        />
+        <Card>
+          <CardHeader className="flex gap-3">
+            <Icon
+              icon="lucide:dollar-sign"
+              className="text-2xl text-green-500"
+            />
+            <div className="flex flex-col">
+              <p className="text-md">Total Sales</p>
+              <p className="text-small text-default-500">All Time</p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-2xl font-bold">
+              ₹{stats.totalSales.toLocaleString()}
+            </p>
+            <div className="mt-2 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Today:</span>
+                <span>₹{stats.todaySales.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>This Week:</span>
+                <span>₹{stats.weekSales.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>This Month:</span>
+                <span>₹{stats.monthSales.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex gap-3">
+            <Icon
+              icon="lucide:shopping-cart"
+              className="text-2xl text-blue-500"
+            />
+            <div className="flex flex-col">
+              <p className="text-md">Transactions</p>
+              <p className="text-small text-default-500">Total</p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-2xl font-bold">{stats.totalTransactions}</p>
+            <div className="mt-2">
+              <p className="text-sm text-default-500">
+                Average: ₹
+                {stats.totalTransactions > 0
+                  ? (stats.totalSales / stats.totalTransactions).toFixed(2)
+                  : "0"}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex gap-3">
+            <Icon icon="lucide:users" className="text-2xl text-purple-500" />
+            <div className="flex flex-col">
+              <p className="text-md">Customers</p>
+              <p className="text-small text-default-500">Total</p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-2xl font-bold">{stats.totalCustomers}</p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex gap-3">
+            <Icon icon="lucide:package" className="text-2xl text-orange-500" />
+            <div className="flex flex-col">
+              <p className="text-md">Products</p>
+              <p className="text-small text-default-500">In Stock</p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-2xl font-bold">{stats.totalProducts}</p>
+            {stats.lowStockProducts > 0 && (
+              <Chip size="sm" color="warning" className="mt-2">
+                {stats.lowStockProducts} Low Stock
+              </Chip>
+            )}
+          </CardBody>
+        </Card>
       </div>
 
       {/* Charts Row */}

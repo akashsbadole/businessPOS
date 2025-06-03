@@ -16,56 +16,52 @@ import {
   Pagination,
   Card,
   Spinner,
+  useDisclosure,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Product, Category } from "../../types/pos";
+import { useInventoryStore } from "../../stores/inventory-store";
+import { CSVUploadModal } from "../../components/inventory/csv-upload-modal";
 import {
   ProductService,
   CategoryService,
 } from "../../services/database-factory";
 
 export const InventoryPage: React.FC = () => {
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const {
+    products,
+    categories,
+    filteredProducts,
+    isLoading,
+    searchQuery,
+    selectedCategory,
+    sortBy,
+    sortOrder,
+    isExporting,
+    loadProducts,
+    loadCategories,
+    setSearchQuery,
+    setSelectedCategory,
+    setSortBy,
+    setSortOrder,
+    exportToCSV,
+    deleteProduct,
+  } = useInventoryStore();
+
+  const {
+    isOpen: isUploadOpen,
+    onOpen: onUploadOpen,
+    onOpenChange: onUploadOpenChange,
+  } = useDisclosure();
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
-  const [products, setProducts] = React.useState<Product[]>([]);
-  const [categories, setCategories] = React.useState<Category[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
 
   const rowsPerPage = 10;
 
-  // Load products and categories from database
+  // Load data on mount
   React.useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [productsData, categoriesData] = await Promise.all([
-          ProductService.getAll(),
-          CategoryService.getAll(),
-        ]);
-
-        setProducts(productsData);
-        setCategories(categoriesData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error loading inventory data:", error);
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  const filteredProducts = React.useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch = product.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesCategory =
-        selectedCategory === "all" || product.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchQuery, selectedCategory, products]);
+    loadProducts();
+    loadCategories();
+  }, [loadProducts, loadCategories]);
 
   const pages = Math.ceil(filteredProducts.length / rowsPerPage);
 
@@ -80,13 +76,74 @@ export const InventoryPage: React.FC = () => {
     return ["all", ...allCategories];
   }, [categories]);
 
+  const handleExport = async (period?: string) => {
+    try {
+      await exportToCSV(period as any);
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  };
+
+  const handleDelete = async (productId: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      try {
+        await deleteProduct(productId);
+      } catch (error) {
+        console.error("Delete failed:", error);
+      }
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Inventory Management</h1>
-        <Button color="primary" startContent={<Icon icon="lucide:plus" />}>
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="flat"
+            startContent={<Icon icon="lucide:upload" />}
+            onPress={onUploadOpen}
+          >
+            Import CSV
+          </Button>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                variant="flat"
+                startContent={<Icon icon="lucide:download" />}
+                isLoading={isExporting}
+              >
+                Export
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Export options">
+              <DropdownItem
+                key="all"
+                startContent={<Icon icon="lucide:package" />}
+                onPress={() => handleExport()}
+              >
+                All Products
+              </DropdownItem>
+              <DropdownItem
+                key="monthly"
+                startContent={<Icon icon="lucide:calendar" />}
+                onPress={() => handleExport("monthly")}
+              >
+                Updated This Month
+              </DropdownItem>
+              <DropdownItem
+                key="weekly"
+                startContent={<Icon icon="lucide:calendar" />}
+                onPress={() => handleExport("weekly")}
+              >
+                Updated This Week
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+          <Button color="primary" startContent={<Icon icon="lucide:plus" />}>
+            Add Product
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-8">
@@ -143,13 +200,24 @@ export const InventoryPage: React.FC = () => {
               Showing {paginatedProducts.length} of {filteredProducts.length}{" "}
               products
             </p>
-            <Button
-              size="sm"
-              variant="flat"
-              startContent={<Icon icon="lucide:download" />}
-            >
-              Export
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="flat"
+                startContent={<Icon icon="lucide:filter" />}
+              >
+                Sort: {sortBy} ({sortOrder})
+              </Button>
+              <Button
+                size="sm"
+                variant="flat"
+                startContent={<Icon icon="lucide:download" />}
+                onPress={() => handleExport()}
+                isLoading={isExporting}
+              >
+                Export
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
@@ -237,7 +305,13 @@ export const InventoryPage: React.FC = () => {
                     <Button isIconOnly size="sm" variant="light">
                       <Icon icon="lucide:edit" />
                     </Button>
-                    <Button isIconOnly size="sm" variant="light" color="danger">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      color="danger"
+                      onPress={() => handleDelete(product.id)}
+                    >
                       <Icon icon="lucide:trash" />
                     </Button>
                   </div>
@@ -247,6 +321,12 @@ export const InventoryPage: React.FC = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* CSV Upload Modal */}
+      <CSVUploadModal
+        isOpen={isUploadOpen}
+        onClose={() => onUploadOpenChange()}
+      />
     </div>
   );
 };

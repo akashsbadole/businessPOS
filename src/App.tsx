@@ -8,6 +8,9 @@ import "./test-turso";
 // Import console utilities for warning suppression
 import { suppressKnownWarnings } from "./utils/console-utils";
 
+// Import development helpers
+import "./utils/dev-helpers";
+
 // Suppress known third-party warnings in development
 if (import.meta.env.NODE_ENV === "development") {
   suppressKnownWarnings();
@@ -15,6 +18,12 @@ if (import.meta.env.NODE_ENV === "development") {
 
 // Auth Context
 import { AuthProvider, useAuth } from "./contexts/auth-context";
+
+// Subscription Context
+import {
+  SubscriptionProvider,
+  useSubscription,
+} from "./contexts/subscription-context";
 
 // Layouts
 import { MainLayout } from "./layouts/main-layout";
@@ -31,11 +40,17 @@ import { SuppliersPage } from "./pages/suppliers";
 import { PurchaseOrdersPage } from "./pages/purchase-orders";
 import { StatusPage } from "./pages/status";
 import { BusinessSettingsPage } from "./pages/business-settings";
+import { SubscriptionPage } from "./pages/subscription";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const {
+    isSubscribed,
+    isLoading: subscriptionLoading,
+    validation,
+  } = useSubscription();
 
-  if (isLoading) {
+  if (isLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -44,6 +59,11 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Check subscription first (before authentication)
+  if (!isSubscribed || validation?.redirectToPayment) {
+    return <SubscriptionPage />;
   }
 
   if (!isAuthenticated) {
@@ -97,9 +117,11 @@ export default function App() {
   return (
     <Router>
       <ToastProvider />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <SubscriptionProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </SubscriptionProvider>
     </Router>
   );
 }

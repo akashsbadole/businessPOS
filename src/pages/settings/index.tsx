@@ -48,7 +48,7 @@ export const SettingsPage: React.FC = () => {
                   title={
                     <div className="flex items-center gap-2">
                       <Icon icon="lucide:building-2" />
-                      <span>Business Profile</span>
+                      <span className="text-black">Business Profile</span>
                     </div>
                   }
                 />
@@ -57,7 +57,7 @@ export const SettingsPage: React.FC = () => {
                   title={
                     <div className="flex items-center gap-2">
                       <Icon icon="lucide:percent" />
-                      <span>Tax Settings</span>
+                      <span className="text-black">Tax Settings</span>
                     </div>
                   }
                 />
