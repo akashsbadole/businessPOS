@@ -4,6 +4,7 @@ import { ProductCatalog } from "../../components/pos/product-catalog";
 import { ProductSearchModal } from "../../components/pos/product-search-modal";
 import { Product, Customer } from "../../types/pos";
 import { usePOSStore } from "../../stores/pos-store";
+import { useInventoryStore } from "../../stores/inventory-store";
 import {
   Button,
   Input,
@@ -24,11 +25,18 @@ import {
   Kbd,
 } from "@heroui/react";
 import { InvoiceView } from "../../components/pos/invoice-view";
+import { SmartCalculator } from "../../components/pos/smart-calculator";
+import { EnhancedPaymentModal } from "../../components/pos/enhanced-payment-modal";
+import { InventorySyncStatus } from "../../components/pos/inventory-sync-status";
+import { QuantityModal } from "../../components/pos/quantity-modal";
+import { DiscountModal } from "../../components/pos/discount-modal";
+import { TaxModal } from "../../components/pos/tax-modal";
+import { RemarksModal } from "../../components/pos/remarks-modal";
 
 export const POSPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  // Zustand store
+  // Zustand stores
   const {
     cartItems,
     selectedCustomer,
@@ -57,6 +65,13 @@ export const POSPage: React.FC = () => {
     setShowInvoiceView,
   } = usePOSStore();
 
+  // Inventory store for products
+  const {
+    products: inventoryProducts,
+    loadProducts,
+    isLoading: isLoadingProducts,
+  } = useInventoryStore();
+
   // Local state for non-store data
   const [products, setProducts] = React.useState<Product[]>([]);
   const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -72,6 +87,11 @@ export const POSPage: React.FC = () => {
     email: "",
     address: "",
   });
+
+  // New component states
+  const [showCalculator, setShowCalculator] = React.useState(false);
+  const [showEnhancedPayment, setShowEnhancedPayment] = React.useState(false);
+  const [calculatorTitle, setCalculatorTitle] = React.useState("Calculator");
 
   // Calculate totals from cart items with proper tax and discount calculations
   const subTotal = React.useMemo(() => {
@@ -162,55 +182,152 @@ export const POSPage: React.FC = () => {
     }
   }, [invoiceNumber, generateInvoiceNumber]);
 
+  // State for modals and dialogs
+  const [showQuantityModal, setShowQuantityModal] = React.useState(false);
+  const [showDiscountModal, setShowDiscountModal] = React.useState(false);
+  const [showTaxModal, setShowTaxModal] = React.useState(false);
+  const [showRemarksModal, setShowRemarksModal] = React.useState(false);
+  const [selectedCartItemId, setSelectedCartItemId] = React.useState<
+    string | null
+  >(null);
+
+  // Bill-level state
+  const [billDiscount, setBillDiscount] = React.useState(0);
+  const [billTaxRate, setBillTaxRate] = React.useState(0);
+  const [billRemarks, setBillRemarks] = React.useState("");
+
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "f") {
-        event.preventDefault();
-        openProductSearch();
+      // Prevent shortcuts when typing in input fields
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.contentEditable === "true"
+      ) {
+        return;
       }
-      if (event.key === "Escape" && isProductSearchOpen) {
-        closeProductSearch();
+
+      // Handle shortcuts
+      switch (event.key) {
+        case "F2":
+          event.preventDefault();
+          if (cartItems.length > 0) {
+            setSelectedCartItemId(cartItems[0].id);
+            setShowQuantityModal(true);
+          }
+          break;
+        case "F3":
+          event.preventDefault();
+          if (cartItems.length > 0) {
+            setSelectedCartItemId(cartItems[0].id);
+            setShowDiscountModal(true);
+          }
+          break;
+        case "F4":
+          event.preventDefault();
+          if (cartItems.length > 0) {
+            removeFromCart(cartItems[0].id);
+          }
+          break;
+        case "F7":
+          event.preventDefault();
+          setShowTaxModal(true);
+          break;
+        case "F9":
+          event.preventDefault();
+          setShowDiscountModal(true);
+          break;
+        case "F10":
+          event.preventDefault();
+          // Loyalty points functionality
+          console.log("Loyalty points feature - F10 pressed");
+          break;
+        case "F12":
+          event.preventDefault();
+          setShowRemarksModal(true);
+          break;
+        case "Escape":
+          event.preventDefault();
+          if (isProductSearchOpen) {
+            closeProductSearch();
+          } else if (showQuantityModal) {
+            setShowQuantityModal(false);
+          } else if (showDiscountModal) {
+            setShowDiscountModal(false);
+          } else if (showTaxModal) {
+            setShowTaxModal(false);
+          } else if (showRemarksModal) {
+            setShowRemarksModal(false);
+          }
+          break;
+      }
+
+      // Handle Ctrl combinations
+      if (event.ctrlKey) {
+        switch (event.key.toLowerCase()) {
+          case "f":
+            event.preventDefault();
+            openProductSearch();
+            break;
+          case "t":
+            event.preventDefault();
+            handleNewBill();
+            break;
+          case "p":
+            event.preventDefault();
+            if (cartItems.length > 0) {
+              processCheckout();
+            }
+            break;
+          case "b":
+            event.preventDefault();
+            // Partial payment functionality
+            setShowEnhancedPayment(true);
+            break;
+          case "m":
+            event.preventDefault();
+            // Multi payment functionality
+            setShowEnhancedPayment(true);
+            break;
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isProductSearchOpen, openProductSearch, closeProductSearch]);
+  }, [
+    isProductSearchOpen,
+    openProductSearch,
+    closeProductSearch,
+    cartItems,
+    removeFromCart,
+    handleNewBill,
+    processCheckout,
+    showQuantityModal,
+    showDiscountModal,
+    showTaxModal,
+    showRemarksModal,
+  ]);
 
-  // Load sample data for now
+  // Initialize data
   React.useEffect(() => {
-    // Sample products
-    const sampleProducts: Product[] = [
-      {
-        id: "1",
-        name: "Sample Product 1",
-        price: 100,
-        stock: 50,
-        category: "Electronics",
-        barcode: "123456789",
-        hsn: "8517",
-        taxRate: 18,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "2",
-        name: "Sample Product 2",
-        price: 200,
-        stock: 30,
-        category: "Clothing",
-        barcode: "987654321",
-        hsn: "6109",
-        taxRate: 12,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
+    const initializeData = async () => {
+      // Load products from inventory
+      await loadProducts();
 
-    // Sample customers
+      // If no products exist, add some sample products for demo
+      if (inventoryProducts.length === 0) {
+        console.log(
+          "No products found in inventory. You can import products via CSV or add them manually."
+        );
+      }
+    };
+
+    initializeData();
+
+    // Sample customers (you can replace this with customer store later)
     const sampleCustomers: Customer[] = [
       {
         id: "1",
@@ -224,13 +341,31 @@ export const POSPage: React.FC = () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: "2",
+        name: "Jane Smith",
+        phone: "9876543211",
+        email: "jane@example.com",
+        address: "456 Oak Ave",
+        totalOrders: 3,
+        totalSpent: 750,
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ];
 
-    setProducts(sampleProducts);
-    setFilteredProducts(sampleProducts);
     setCustomers(sampleCustomers);
     setFilteredCustomers(sampleCustomers);
-  }, []);
+  }, [loadProducts]);
+
+  // Update products when inventory changes
+  React.useEffect(() => {
+    if (inventoryProducts.length > 0) {
+      setProducts(inventoryProducts);
+      setFilteredProducts(inventoryProducts);
+    }
+  }, [inventoryProducts]);
 
   // Search products
   React.useEffect(() => {
@@ -344,6 +479,11 @@ export const POSPage: React.FC = () => {
         </Button>
       </div>
 
+      {/* Inventory Status */}
+      <div className="p-2 border-b border-gray-200">
+        <InventorySyncStatus />
+      </div>
+
       {/* Search bar */}
       <div className="p-2 border-b border-gray-200">
         <Input
@@ -359,6 +499,7 @@ export const POSPage: React.FC = () => {
                 variant="light"
                 size="sm"
                 onPress={openProductSearch}
+                title="Advanced Search"
               >
                 <Icon icon="lucide:search" />
               </Button>
@@ -366,8 +507,19 @@ export const POSPage: React.FC = () => {
                 isIconOnly
                 variant="light"
                 size="sm"
+                onPress={() => loadProducts()}
+                isLoading={isLoadingProducts}
+                title="Refresh Products"
+              >
+                <Icon icon="lucide:refresh-cw" />
+              </Button>
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
                 onPress={onOpen}
                 aria-label="Open Product Catalog"
+                title="Product Catalog"
               >
                 <Icon icon="lucide:package" />
               </Button>
@@ -677,16 +829,30 @@ export const POSPage: React.FC = () => {
                 <label className="block text-sm text-gray-600 mb-1">
                   Amount Received:
                 </label>
-                <Input
-                  size="sm"
-                  type="number"
-                  value={amountReceived.toString()}
-                  onValueChange={(value) =>
-                    setAmountReceived(parseFloat(value) || 0)
-                  }
-                  startContent="₹"
-                  className="w-full"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    size="sm"
+                    type="number"
+                    value={amountReceived.toString()}
+                    onValueChange={(value) =>
+                      setAmountReceived(parseFloat(value) || 0)
+                    }
+                    startContent="₹"
+                    className="flex-1"
+                  />
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setCalculatorTitle("Amount Calculator");
+                      setShowCalculator(true);
+                    }}
+                    title="Open Calculator"
+                  >
+                    <Icon icon="lucide:calculator" />
+                  </Button>
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Change to Return:</span>
@@ -724,40 +890,93 @@ export const POSPage: React.FC = () => {
 
           {/* Action buttons */}
           <div className="mt-auto">
-            <Button
-              color="success"
-              className="w-full py-3 rounded-none"
-              onPress={async () => {
-                const success = await processCheckout();
-                if (success) {
-                  console.log(
-                    "Sale completed - Transaction saved successfully"
-                  );
-                } else {
-                  console.error("Error - Failed to process checkout");
-                }
-              }}
-              startContent={<Icon icon="lucide:printer" />}
-              isDisabled={cartItems.length === 0}
-              isLoading={isLoading}
-            >
-              Save & Print Bill [{shortcutKeys.saveAndPrint}]
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                color="primary"
+                className="py-3 rounded-none"
+                onPress={() => setShowEnhancedPayment(true)}
+                startContent={<Icon icon="lucide:credit-card" />}
+                isDisabled={cartItems.length === 0}
+              >
+                Payment Options
+              </Button>
+              <Button
+                color="success"
+                className="py-3 rounded-none"
+                onPress={async () => {
+                  const success = await processCheckout();
+                  if (success) {
+                    console.log(
+                      "Sale completed - Transaction saved successfully"
+                    );
+                  } else {
+                    console.error("Error - Failed to process checkout");
+                  }
+                }}
+                startContent={<Icon icon="lucide:printer" />}
+                isDisabled={cartItems.length === 0}
+                isLoading={isLoading}
+              >
+                Quick Cash & Print
+              </Button>
+            </div>
 
             <div className="grid grid-cols-2 gap-px bg-gray-200">
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => {
+                  if (cartItems.length > 0) {
+                    setSelectedCartItemId(cartItems[0].id);
+                    setShowQuantityModal(true);
+                  }
+                }}
+                isDisabled={cartItems.length === 0}
+              >
                 Change Quantity [{shortcutKeys.changeQuantity}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => {
+                  if (cartItems.length > 0) {
+                    setSelectedCartItemId(cartItems[0].id);
+                    setShowDiscountModal(true);
+                  }
+                }}
+                isDisabled={cartItems.length === 0}
+              >
                 Item Discount [{shortcutKeys.itemDiscount}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => {
+                  if (cartItems.length > 0) {
+                    removeFromCart(cartItems[0].id);
+                  }
+                }}
+                isDisabled={cartItems.length === 0}
+              >
                 Remove Item [{shortcutKeys.removeItem}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => setShowTaxModal(true)}
+              >
                 Bill Tax [{shortcutKeys.billTax}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => setShowDiscountModal(true)}
+              >
                 Bill Discount [{shortcutKeys.billDiscount}]
               </Button>
               <Button
@@ -765,13 +984,28 @@ export const POSPage: React.FC = () => {
                 className="rounded-none py-2"
                 size="sm"
                 color="secondary"
+                onPress={() => {
+                  console.log("Loyalty points feature activated");
+                  // Add loyalty points functionality here
+                }}
               >
                 Loyalty Points [{shortcutKeys.loyaltyPoints}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => setShowRemarksModal(true)}
+              >
                 Remarks [{shortcutKeys.remarks}]
               </Button>
-              <Button variant="flat" className="rounded-none py-2" size="sm">
+              <Button
+                variant="flat"
+                className="rounded-none py-2"
+                size="sm"
+                onPress={() => setShowEnhancedPayment(true)}
+                isDisabled={cartItems.length === 0}
+              >
                 Partial Pay [{shortcutKeys.partialPay}]
               </Button>
               <Button
@@ -779,6 +1013,8 @@ export const POSPage: React.FC = () => {
                 className="rounded-none py-2 col-span-2"
                 size="sm"
                 color="primary"
+                onPress={() => setShowEnhancedPayment(true)}
+                isDisabled={cartItems.length === 0}
               >
                 Multi Pay [{shortcutKeys.multiPay}]
               </Button>
@@ -799,11 +1035,37 @@ export const POSPage: React.FC = () => {
                 </div>
               </ModalHeader>
               <ModalBody>
-                {isLoading ? (
+                {isLoadingProducts || isLoading ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                       <p className="text-default-500">Loading products...</p>
+                    </div>
+                  </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                      <Icon
+                        icon="lucide:package-x"
+                        className="text-6xl text-default-300 mx-auto mb-4"
+                      />
+                      <p className="text-default-500 text-lg mb-2">
+                        No products found
+                      </p>
+                      <p className="text-default-400 text-sm mb-4">
+                        Import products from inventory or add them manually
+                      </p>
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        startContent={<Icon icon="lucide:plus" />}
+                        onPress={() => {
+                          // Navigate to inventory page
+                          window.location.href = "/inventory";
+                        }}
+                      >
+                        Go to Inventory
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -814,9 +1076,33 @@ export const POSPage: React.FC = () => {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="flat" onPress={onClose}>
-                  Close
-                </Button>
+                <div className="flex justify-between w-full">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="flat"
+                      startContent={<Icon icon="lucide:refresh-cw" />}
+                      onPress={() => {
+                        loadProducts();
+                      }}
+                      isLoading={isLoadingProducts}
+                    >
+                      Refresh Products
+                    </Button>
+                    <Button
+                      variant="flat"
+                      color="secondary"
+                      startContent={<Icon icon="lucide:package-plus" />}
+                      onPress={() => {
+                        window.location.href = "/inventory";
+                      }}
+                    >
+                      Manage Inventory
+                    </Button>
+                  </div>
+                  <Button variant="flat" onPress={onClose}>
+                    Close
+                  </Button>
+                </div>
               </ModalFooter>
             </>
           )}
@@ -912,6 +1198,106 @@ export const POSPage: React.FC = () => {
           // Print functionality
           window.print();
           clearCart();
+        }}
+      />
+
+      {/* Smart Calculator Modal */}
+      <SmartCalculator
+        isOpen={showCalculator}
+        onOpenChange={setShowCalculator}
+        title={calculatorTitle}
+        initialValue={amountReceived}
+        onResult={(result) => {
+          setAmountReceived(result);
+        }}
+      />
+
+      {/* Enhanced Payment Modal */}
+      <EnhancedPaymentModal
+        isOpen={showEnhancedPayment}
+        onOpenChange={setShowEnhancedPayment}
+        totalAmount={totalAmount}
+        onPaymentComplete={(paymentData) => {
+          console.log("Payment completed:", paymentData);
+          setAmountReceived(paymentData.amountReceived);
+          setPaymentMode(paymentData.method);
+          setShowEnhancedPayment(false);
+
+          // Process checkout with enhanced payment data
+          processCheckout();
+        }}
+      />
+
+      {/* Quantity Modal */}
+      {selectedCartItemId && (
+        <QuantityModal
+          isOpen={showQuantityModal}
+          onOpenChange={setShowQuantityModal}
+          currentQuantity={
+            cartItems.find((item) => item.id === selectedCartItemId)
+              ?.quantity || 1
+          }
+          productName={
+            cartItems.find((item) => item.id === selectedCartItemId)?.name || ""
+          }
+          onQuantityChange={(newQuantity) => {
+            updateCartItemQuantity(selectedCartItemId, newQuantity);
+            setSelectedCartItemId(null);
+          }}
+        />
+      )}
+
+      {/* Discount Modal */}
+      <DiscountModal
+        isOpen={showDiscountModal}
+        onOpenChange={setShowDiscountModal}
+        currentDiscount={
+          selectedCartItemId
+            ? cartItems.find((item) => item.id === selectedCartItemId)
+                ?.discount || 0
+            : billDiscount
+        }
+        productName={
+          selectedCartItemId
+            ? cartItems.find((item) => item.id === selectedCartItemId)?.name
+            : undefined
+        }
+        productPrice={
+          selectedCartItemId
+            ? cartItems.find((item) => item.id === selectedCartItemId)?.price ||
+              0
+            : subTotal
+        }
+        type={selectedCartItemId ? "item" : "bill"}
+        onDiscountChange={(discount, type) => {
+          if (selectedCartItemId) {
+            // Apply item discount (implement in cart store)
+            console.log("Apply item discount:", discount, type);
+          } else {
+            setBillDiscount(discount);
+          }
+          setSelectedCartItemId(null);
+        }}
+      />
+
+      {/* Tax Modal */}
+      <TaxModal
+        isOpen={showTaxModal}
+        onOpenChange={setShowTaxModal}
+        currentTaxRate={billTaxRate}
+        billAmount={subTotal - billDiscount}
+        onTaxChange={(taxRate) => {
+          setBillTaxRate(taxRate);
+        }}
+      />
+
+      {/* Remarks Modal */}
+      <RemarksModal
+        isOpen={showRemarksModal}
+        onOpenChange={setShowRemarksModal}
+        currentRemarks={billRemarks}
+        onRemarksChange={(remarks) => {
+          setBillRemarks(remarks);
         }}
       />
     </div>
