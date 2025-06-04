@@ -217,6 +217,14 @@ export const usePOSStore = create<POSState>()(
             );
             const total = subtotal + taxAmount + state.roundOff;
 
+            // Determine payment status
+            const paymentStatus =
+              amountReceived >= total
+                ? "paid"
+                : amountReceived > 0
+                ? "partial"
+                : "unpaid";
+
             const transaction: Partial<Transaction> = {
               invoiceNumber,
               date: new Date(),
@@ -234,9 +242,35 @@ export const usePOSStore = create<POSState>()(
               total,
               paymentMode,
               amountReceived,
-              change: amountReceived - total,
-              status: "completed",
+              change: Math.max(0, amountReceived - total),
+              pendingAmount: Math.max(0, total - amountReceived),
+              paymentStatus,
+              status: paymentStatus === "paid" ? "completed" : "pending",
             };
+
+            // If payment is not complete, add to pending payments tracking
+            if (paymentStatus !== "paid") {
+              const pendingPayment = {
+                id: `pending_${Date.now()}`,
+                invoiceNumber,
+                customerName: selectedCustomer?.name || "Walk-in Customer",
+                totalAmount: total,
+                amountReceived,
+                pendingAmount: Math.max(0, total - amountReceived),
+                paymentStatus: paymentStatus as "partial" | "unpaid",
+                date: new Date(),
+              };
+
+              // Store pending payment (in real app, this would go to database)
+              const existingPending = JSON.parse(
+                localStorage.getItem("pendingPayments") || "[]"
+              );
+              existingPending.push(pendingPayment);
+              localStorage.setItem(
+                "pendingPayments",
+                JSON.stringify(existingPending)
+              );
+            }
 
             // Simulate saving transaction
             console.log("Transaction saved:", transaction);

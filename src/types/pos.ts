@@ -53,7 +53,11 @@ export interface Transaction {
   // Additional properties for Turso compatibility
   amountReceived?: number;
   change?: number;
+  pendingAmount?: number;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  notes?: string;
   createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Customer {

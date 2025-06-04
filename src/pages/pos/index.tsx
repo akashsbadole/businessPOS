@@ -73,7 +73,7 @@ export const POSPage: React.FC = () => {
     address: "",
   });
 
-  // Calculate totals from cart items
+  // Calculate totals from cart items with proper tax and discount calculations
   const subTotal = React.useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [cartItems]);
@@ -86,18 +86,58 @@ export const POSPage: React.FC = () => {
   }, [cartItems]);
 
   const itemTax = React.useMemo(() => {
-    return cartItems.reduce(
-      (sum, item) => sum + (item.taxAmount || 0) * item.quantity,
-      0
-    );
+    return cartItems.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      const itemDiscountAmount = (item.discount || 0) * item.quantity;
+      const taxableAmount = itemSubtotal - itemDiscountAmount;
+      const taxAmount = (taxableAmount * (item.taxRate || 18)) / 100;
+      return sum + taxAmount;
+    }, 0);
   }, [cartItems]);
 
   const totalAmount = React.useMemo(() => {
-    return subTotal - itemDiscount + itemTax + roundOff;
+    const finalAmount = subTotal - itemDiscount + itemTax + roundOff;
+    return Math.round(finalAmount * 100) / 100; // Round to 2 decimal places
   }, [subTotal, itemDiscount, itemTax, roundOff]);
 
+  // Payment calculations
   const calculateChange = () => {
     return Math.max(0, amountReceived - totalAmount);
+  };
+
+  const calculatePendingAmount = () => {
+    return Math.max(0, totalAmount - amountReceived);
+  };
+
+  const getPaymentStatus = () => {
+    if (amountReceived >= totalAmount) return "paid";
+    if (amountReceived > 0) return "partial";
+    return "unpaid";
+  };
+
+  // Handle new bill creation
+  const handleNewBill = () => {
+    clearCart();
+    setSelectedCustomer(null);
+    setSearchCustomerQuery("");
+    setAmountReceived(0);
+    generateInvoiceNumber();
+    console.log("New Bill Created - Ready for new transaction");
+  };
+
+  // Convert CartItem to BillItem for invoice
+  const convertCartItemsToBillItems = (items: typeof cartItems) => {
+    return items.map((item) => ({
+      id: item.id,
+      itemCode: item.barcode || item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      discount: item.discount || 0,
+      taxApplied: item.taxAmount || 0,
+      total: item.total,
+      hsn: item.hsn || "",
+    }));
   };
 
   const shortcutKeys = {
@@ -289,7 +329,7 @@ export const POSPage: React.FC = () => {
       {/* Tab bar with bill number */}
       <div className="flex items-center bg-gray-100 px-2 py-1 border-b border-gray-200">
         <div className="flex items-center mr-2">
-          <span className="text-gray-600 px-2 py-1">#{billNumber}</span>
+          <span className="text-gray-600 px-2 py-1">#{invoiceNumber}</span>
           <Button isIconOnly variant="light" size="sm" className="ml-1">
             <Icon icon="lucide:x" width={14} height={14} />
           </Button>
@@ -311,7 +351,6 @@ export const POSPage: React.FC = () => {
           size="sm"
           value={searchQuery}
           onValueChange={setSearchQuery}
-          onFocus={openProductSearch}
           endContent={
             <div className="flex gap-1">
               <Kbd className="hidden sm:inline-block">Ctrl+F</Kbd>
@@ -651,8 +690,33 @@ export const POSPage: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Change to Return:</span>
-                <span className="font-medium">
+                <span className="font-medium text-green-600">
                   ₹ {calculateChange().toFixed(2)}
+                </span>
+              </div>
+
+              {/* Payment Status */}
+              {calculatePendingAmount() > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Pending Amount:</span>
+                  <span className="font-medium text-red-600">
+                    ₹ {calculatePendingAmount().toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">Payment Status:</span>
+                <span
+                  className={`font-medium px-2 py-1 rounded text-xs ${
+                    getPaymentStatus() === "paid"
+                      ? "bg-green-100 text-green-800"
+                      : getPaymentStatus() === "partial"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {getPaymentStatus().toUpperCase()}
                 </span>
               </div>
             </div>
@@ -666,17 +730,11 @@ export const POSPage: React.FC = () => {
               onPress={async () => {
                 const success = await processCheckout();
                 if (success) {
-                  addToast({
-                    title: "Sale completed",
-                    description: "Transaction saved successfully",
-                    severity: "success",
-                  });
+                  console.log(
+                    "Sale completed - Transaction saved successfully"
+                  );
                 } else {
-                  addToast({
-                    title: "Error",
-                    description: "Failed to process checkout",
-                    severity: "danger",
-                  });
+                  console.error("Error - Failed to process checkout");
                 }
               }}
               startContent={<Icon icon="lucide:printer" />}
@@ -838,7 +896,7 @@ export const POSPage: React.FC = () => {
       <InvoiceView
         isOpen={showInvoiceView}
         onOpenChange={setShowInvoiceView}
-        billItems={cartItems}
+        billItems={convertCartItemsToBillItems(cartItems)}
         billNumber={invoiceNumber}
         subTotal={subTotal}
         itemDiscount={itemDiscount}
@@ -846,6 +904,10 @@ export const POSPage: React.FC = () => {
         roundOff={roundOff}
         totalAmount={totalAmount}
         paymentMode={paymentMode}
+        amountReceived={amountReceived}
+        changeAmount={calculateChange()}
+        pendingAmount={calculatePendingAmount()}
+        paymentStatus={getPaymentStatus()}
         onPrint={() => {
           // Print functionality
           window.print();

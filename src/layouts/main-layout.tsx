@@ -138,6 +138,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </Badge>
           )}
 
+          {/* Payment Tracker Button */}
+          <Button
+            isIconOnly
+            variant="light"
+            radius="full"
+            title="Payment Tracker - View pending payments"
+            onPress={() => {
+              // This will be handled by the POS page
+              const event = new CustomEvent("openPaymentTracker");
+              window.dispatchEvent(event);
+            }}
+          >
+            <Icon icon="lucide:credit-card" className="text-warning" />
+          </Button>
+
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <Avatar

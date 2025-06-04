@@ -208,13 +208,12 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({
                   {filteredProducts.map((product) => (
                     <Card
                       key={product.id}
-                      isPressable
-                      onPress={() => handleProductSelect(product)}
-                      className={`${
+                      className={`cursor-pointer ${
                         selectedProduct?.id === product.id
                           ? "border-2 border-primary bg-primary-50"
                           : "hover:bg-content2"
                       }`}
+                      onClick={() => handleProductSelect(product)}
                     >
                       <CardBody className="p-3">
                         <div className="flex items-center gap-3">

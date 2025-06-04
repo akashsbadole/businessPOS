@@ -33,6 +33,10 @@ interface InvoiceViewProps {
   roundOff: number;
   totalAmount: number;
   paymentMode: string;
+  amountReceived?: number;
+  changeAmount?: number;
+  pendingAmount?: number;
+  paymentStatus?: string;
   onPrint: () => void;
 }
 
@@ -47,6 +51,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
   roundOff,
   totalAmount,
   paymentMode,
+  amountReceived = 0,
+  changeAmount = 0,
+  pendingAmount = 0,
+  paymentStatus = "unpaid",
   onPrint,
 }) => {
   const currentDate = new Date().toLocaleDateString("en-IN", {
@@ -299,7 +307,41 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                 </div>
 
                 <div className="mt-3">
-                  <p className="font-medium">Payment Method: {paymentMode}</p>
+                  <p className="font-medium">Payment Details:</p>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span>Payment Method:</span>
+                    <span>{paymentMode}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span>Amount Received:</span>
+                    <span>₹{amountReceived.toFixed(2)}</span>
+                  </div>
+                  {changeAmount > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span>Change Returned:</span>
+                      <span>₹{changeAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {pendingAmount > 0 && (
+                    <div className="flex justify-between text-xs font-medium text-red-600">
+                      <span>Pending Amount:</span>
+                      <span>₹{pendingAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs">
+                    <span>Payment Status:</span>
+                    <span
+                      className={`font-medium ${
+                        paymentStatus === "paid"
+                          ? "text-green-600"
+                          : paymentStatus === "partial"
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {paymentStatus.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
 
                 <Divider className="my-3" />
