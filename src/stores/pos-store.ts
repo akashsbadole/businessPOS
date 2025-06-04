@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { Product, CartItem, Customer, Transaction } from "../types/pos";
+import { useDatabaseStore } from "./database-store";
 // import { ProductService, InvoiceService } from "../services/database-factory";
 
 interface POSState {
@@ -65,7 +66,7 @@ export const usePOSStore = create<POSState>()(
         filteredProducts: [],
         currentTransaction: null,
         invoiceNumber: "",
-        paymentMode: "Cash",
+        paymentMode: "cash",
         amountReceived: 0,
         roundOff: 0,
         isLoading: false,
@@ -272,8 +273,43 @@ export const usePOSStore = create<POSState>()(
               );
             }
 
-            // Simulate saving transaction
-            console.log("Transaction saved:", transaction);
+            // Save transaction to database
+            try {
+              const dbTransaction = {
+                customerId: selectedCustomer?.id,
+                subtotal,
+                discount: 0, // Add discount logic later
+                taxAmount,
+                total,
+                paymentMethod: paymentMode,
+                paymentStatus,
+                amountReceived,
+                changeAmount: Math.max(0, amountReceived - total),
+                pendingAmount: Math.max(0, total - amountReceived),
+                notes: "",
+              };
+
+              const dbItems = cartItems.map((item) => ({
+                productId: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                discount: item.discount || 0,
+                taxRate: item.taxRate || 0,
+                total: item.total,
+              }));
+
+              // Get database store instance
+              const { saveTransaction } = useDatabaseStore.getState();
+              const result = await saveTransaction(dbTransaction, dbItems);
+
+              console.log("Transaction saved to database:", result);
+            } catch (dbError) {
+              console.error("Failed to save to database:", dbError);
+              // Continue with local storage as fallback
+            }
+
+            console.log("Transaction processed:", transaction);
 
             set({
               currentTransaction: transaction,

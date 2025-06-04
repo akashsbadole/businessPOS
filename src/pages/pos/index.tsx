@@ -5,6 +5,7 @@ import { ProductSearchModal } from "../../components/pos/product-search-modal";
 import { Product, Customer } from "../../types/pos";
 import { usePOSStore } from "../../stores/pos-store";
 import { useInventoryStore } from "../../stores/inventory-store";
+import { useDatabaseStore } from "../../stores/database-store";
 import {
   Button,
   Input,
@@ -32,6 +33,11 @@ import { QuantityModal } from "../../components/pos/quantity-modal";
 import { DiscountModal } from "../../components/pos/discount-modal";
 import { TaxModal } from "../../components/pos/tax-modal";
 import { RemarksModal } from "../../components/pos/remarks-modal";
+import {
+  VoiceSearch,
+  processVoiceCommand,
+} from "../../components/pos/voice-search";
+import { CameraBarcodeScanner } from "../../components/pos/camera-barcode-scanner";
 
 export const POSPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -71,6 +77,17 @@ export const POSPage: React.FC = () => {
     loadProducts,
     isLoading: isLoadingProducts,
   } = useInventoryStore();
+
+  // Database store for real data
+  const {
+    products: dbProducts,
+    customers: dbCustomers,
+    loadProducts: loadDbProducts,
+    loadCustomers: loadDbCustomers,
+    addCustomer: addDbCustomer,
+    saveTransaction,
+    isLoading: isDbLoading,
+  } = useDatabaseStore();
 
   // Local state for non-store data
   const [products, setProducts] = React.useState<Product[]>([]);
@@ -196,6 +213,10 @@ export const POSPage: React.FC = () => {
   const [billTaxRate, setBillTaxRate] = React.useState(0);
   const [billRemarks, setBillRemarks] = React.useState("");
 
+  // Voice and camera features
+  const [showVoiceSearch, setShowVoiceSearch] = React.useState(false);
+  const [showCameraScanner, setShowCameraScanner] = React.useState(false);
+
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -314,58 +335,52 @@ export const POSPage: React.FC = () => {
   // Initialize data
   React.useEffect(() => {
     const initializeData = async () => {
-      // Load products from inventory
-      await loadProducts();
+      // Load products and customers from database
+      await loadDbProducts();
+      await loadDbCustomers();
 
-      // If no products exist, add some sample products for demo
-      if (inventoryProducts.length === 0) {
-        console.log(
-          "No products found in inventory. You can import products via CSV or add them manually."
-        );
-      }
+      // Also load from inventory store for compatibility
+      await loadProducts();
     };
 
     initializeData();
+  }, [loadDbProducts, loadDbCustomers, loadProducts]);
 
-    // Sample customers (you can replace this with customer store later)
-    const sampleCustomers: Customer[] = [
-      {
-        id: "1",
-        name: "John Doe",
-        phone: "9876543210",
-        email: "john@example.com",
-        address: "123 Main St",
-        totalOrders: 5,
-        totalSpent: 1000,
-        status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "2",
-        name: "Jane Smith",
-        phone: "9876543211",
-        email: "jane@example.com",
-        address: "456 Oak Ave",
-        totalOrders: 3,
-        totalSpent: 750,
-        status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-
-    setCustomers(sampleCustomers);
-    setFilteredCustomers(sampleCustomers);
-  }, [loadProducts]);
-
-  // Update products when inventory changes
+  // Update products when database or inventory changes
   React.useEffect(() => {
-    if (inventoryProducts.length > 0) {
-      setProducts(inventoryProducts);
-      setFilteredProducts(inventoryProducts);
+    // Prioritize database products, fallback to inventory products
+    const productsToUse =
+      dbProducts.length > 0 ? dbProducts : inventoryProducts;
+    if (productsToUse.length > 0) {
+      setProducts(productsToUse);
+      setFilteredProducts(productsToUse);
     }
-  }, [inventoryProducts]);
+  }, [dbProducts, inventoryProducts]);
+
+  // Update customers when database changes
+  React.useEffect(() => {
+    if (dbCustomers.length > 0) {
+      // Convert database customers to POS customers format
+      const posCustomers: Customer[] = dbCustomers.map((dbCustomer) => ({
+        id: dbCustomer.id,
+        name: dbCustomer.name,
+        phone: dbCustomer.phone,
+        email: dbCustomer.email || "",
+        address: dbCustomer.address,
+        totalOrders: dbCustomer.total_orders,
+        totalSpent: dbCustomer.total_spent,
+        status: dbCustomer.status as "active" | "inactive",
+        city: dbCustomer.city,
+        state: dbCustomer.state,
+        pincode: dbCustomer.pincode,
+        gstin: dbCustomer.gstin,
+        createdAt: new Date(dbCustomer.created_at),
+        updatedAt: new Date(dbCustomer.updated_at),
+      }));
+      setCustomers(posCustomers);
+      setFilteredCustomers(posCustomers);
+    }
+  }, [dbCustomers]);
 
   // Search products
   React.useEffect(() => {
@@ -401,34 +416,123 @@ export const POSPage: React.FC = () => {
     }
   }, [searchCustomerQuery, customers]);
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!newCustomer.name.trim() || !newCustomer.phone.trim()) {
       alert("Name and phone are required fields.");
       return;
     }
 
-    const createdCustomer: Customer = {
-      id: `cust_${Date.now()}`,
-      ...newCustomer,
-      totalOrders: 0,
-      totalSpent: 0,
-      status: "active" as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    try {
+      // Add customer to database
+      const customerId = await addDbCustomer(newCustomer);
 
-    // Update customers list
-    setCustomers((prev) => [...prev, createdCustomer]);
+      // Reload customers from database
+      await loadDbCustomers();
 
-    // Select the new customer automatically
-    setSelectedCustomer(createdCustomer);
-    setSearchCustomerQuery("");
+      // Create customer object for immediate selection
+      const createdCustomer: Customer = {
+        id: customerId,
+        ...newCustomer,
+        email: newCustomer.email || "",
+        totalOrders: 0,
+        totalSpent: 0,
+        status: "active" as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-    // Reset form and close modal
-    setNewCustomer({ name: "", phone: "", email: "", address: "" });
-    setShowAddCustomer(false);
+      // Select the new customer automatically
+      setSelectedCustomer(createdCustomer);
+      setSearchCustomerQuery("");
 
-    alert(`${createdCustomer.name} has been added successfully.`);
+      // Reset form and close modal
+      setNewCustomer({ name: "", phone: "", email: "", address: "" });
+      setShowAddCustomer(false);
+
+      alert(`${createdCustomer.name} has been added successfully.`);
+    } catch (error) {
+      console.error("Failed to add customer:", error);
+      alert("Failed to add customer. Please try again.");
+    }
+  };
+
+  // Voice command handlers
+  const voiceActions = {
+    searchProduct: (query: string) => {
+      setSearchQuery(query);
+      setFilteredProducts(
+        products.filter((product) =>
+          product.name.toLowerCase().includes(query.toLowerCase())
+        )
+      );
+    },
+    addCustomer: (name: string) => {
+      setNewCustomer({ ...newCustomer, name });
+      setShowAddCustomer(true);
+    },
+    showTotal: () => {
+      alert(`Total Amount: ₹${totalAmount.toFixed(2)}`);
+    },
+    printReceipt: () => {
+      if (cartItems.length > 0) {
+        processCheckout();
+      } else {
+        alert("Cart is empty");
+      }
+    },
+    newBill: () => {
+      clearCart();
+      setSelectedCustomer(null);
+    },
+    addToCart: (productName: string, quantity = 1) => {
+      const product = products.find((p) =>
+        p.name.toLowerCase().includes(productName.toLowerCase())
+      );
+      if (product) {
+        addToCart(product, quantity);
+      } else {
+        alert(`Product "${productName}" not found`);
+      }
+    },
+  };
+
+  const handleVoiceResult = (text: string) => {
+    const result = processVoiceCommand(text, voiceActions);
+    console.log("Voice command processed:", result);
+  };
+
+  const handleVoiceProductFound = (product: Product, quantity: number = 1) => {
+    if (product.stock === 0) {
+      alert(`${product.name} is out of stock`);
+      return;
+    }
+
+    if (product.stock < quantity) {
+      alert(`Only ${product.stock} ${product.name} available in stock`);
+      quantity = product.stock;
+    }
+
+    addToCart(product, quantity);
+
+    // Show success feedback
+    const message = `Added ${quantity} ${product.name} to cart`;
+    console.log(message);
+
+    // You could add a toast notification here instead of alert
+    // For now, we'll use a subtle alert
+    setTimeout(() => {
+      alert(message);
+    }, 100);
+  };
+
+  const handleCameraScan = (barcode: string) => {
+    const product = products.find((p) => p.barcode === barcode);
+    if (product) {
+      addToCart(product);
+    } else {
+      alert("Product not found for barcode: " + barcode);
+    }
+    setShowCameraScanner(false);
   };
 
   return (
@@ -512,6 +616,25 @@ export const POSPage: React.FC = () => {
                 title="Refresh Products"
               >
                 <Icon icon="lucide:refresh-cw" />
+              </Button>
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={() => setShowVoiceSearch(!showVoiceSearch)}
+                title="Voice Search"
+                color={showVoiceSearch ? "primary" : "default"}
+              >
+                <Icon icon="lucide:mic" />
+              </Button>
+              <Button
+                isIconOnly
+                variant="light"
+                size="sm"
+                onPress={() => setShowCameraScanner(true)}
+                title="Camera Barcode Scanner"
+              >
+                <Icon icon="lucide:camera" />
               </Button>
               <Button
                 isIconOnly
@@ -812,7 +935,7 @@ export const POSPage: React.FC = () => {
                 </label>
                 <Select
                   size="sm"
-                  selectedKeys={[paymentMode]}
+                  selectedKeys={[paymentMode.toLowerCase()]}
                   onSelectionChange={(keys) =>
                     setPaymentMode(Array.from(keys)[0] as string)
                   }
@@ -820,9 +943,11 @@ export const POSPage: React.FC = () => {
                   aria-label="Payment Mode"
                   label="Payment Mode"
                 >
-                  <SelectItem key="Cash">Cash</SelectItem>
-                  <SelectItem key="UPI">UPI</SelectItem>
-                  <SelectItem key="Card">Card</SelectItem>
+                  <SelectItem key="cash">Cash</SelectItem>
+                  <SelectItem key="upi">UPI</SelectItem>
+                  <SelectItem key="card">Card</SelectItem>
+                  <SelectItem key="wallet">Digital Wallet</SelectItem>
+                  <SelectItem key="credit">Credit</SelectItem>
                 </Select>
               </div>
               <div>
@@ -1298,6 +1423,29 @@ export const POSPage: React.FC = () => {
         currentRemarks={billRemarks}
         onRemarksChange={(remarks) => {
           setBillRemarks(remarks);
+        }}
+      />
+
+      {/* Voice Search */}
+      {showVoiceSearch && (
+        <div className="fixed bottom-4 right-4 z-50 w-80">
+          <VoiceSearch
+            onResult={handleVoiceResult}
+            onProductFound={handleVoiceProductFound}
+            products={products}
+            language="en-IN"
+          />
+        </div>
+      )}
+
+      {/* Camera Barcode Scanner */}
+      <CameraBarcodeScanner
+        isOpen={showCameraScanner}
+        onOpenChange={setShowCameraScanner}
+        onScan={handleCameraScan}
+        onError={(error) => {
+          console.error("Camera scanner error:", error);
+          alert(error);
         }}
       />
     </div>

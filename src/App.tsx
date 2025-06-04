@@ -2,6 +2,9 @@ import React from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { ToastProvider } from "@heroui/react";
 
+// Import database store
+import { useDatabaseStore } from "./stores/database-store";
+
 // Import Turso test (will auto-run in development)
 import "./test-turso";
 
@@ -50,12 +53,48 @@ const AppContent: React.FC = () => {
     validation,
   } = useSubscription();
 
-  if (isLoading || subscriptionLoading) {
+  // Initialize database
+  const {
+    initializeDB,
+    isInitialized,
+    isLoading: dbLoading,
+    error: dbError,
+  } = useDatabaseStore();
+
+  React.useEffect(() => {
+    initializeDB();
+  }, [initializeDB]);
+
+  // Show database error if any
+  if (dbError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-red-600 mb-2">
+            Database Error
+          </h1>
+          <p className="text-gray-600 mb-4">{dbError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || subscriptionLoading || (dbLoading && !isInitialized)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading...</p>
+          <p>Loading BusinessPOS...</p>
+          {dbLoading && (
+            <p className="text-sm text-gray-600">Initializing database...</p>
+          )}
         </div>
       </div>
     );

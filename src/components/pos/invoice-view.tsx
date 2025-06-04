@@ -9,6 +9,7 @@ import {
   Divider,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PDFGenerator } from "../../utils/pdf-generator";
 
 interface BillItem {
   id: string;
@@ -149,6 +150,28 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
     return result + " Only";
   };
 
+  // PDF Download handler
+  const handleDownloadPDF = async () => {
+    const filename = `Invoice_${billNumber}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+
+    try {
+      // Try enhanced PDF generation first
+      await PDFGenerator.generateEnhancedPDF("invoice-content", filename);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      try {
+        // Fallback to regular PDF generation
+        await PDFGenerator.generatePDF("invoice-content", filename);
+      } catch (fallbackError) {
+        console.error("Fallback PDF generation failed:", fallbackError);
+        // Final fallback to browser print dialog
+        PDFGenerator.printElement("invoice-content");
+      }
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -167,6 +190,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                   variant="flat"
                   color="primary"
                   startContent={<Icon icon="lucide:download" />}
+                  onPress={handleDownloadPDF}
                 >
                   Download PDF
                 </Button>
@@ -183,7 +207,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
             <ModalBody>
               <div
                 className="bg-white p-6 font-mono text-sm print:p-0"
-                id="invoice-print"
+                id="invoice-content"
               >
                 {/* Print-specific styles */}
                 <style type="text/css" media="print">
@@ -196,7 +220,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
                       margin: 0; 
                       padding: 0;
                     }
-                    #invoice-print {
+                    #invoice-content {
                       width: 80mm;
                       padding: 5mm;
                       font-size: 10pt;

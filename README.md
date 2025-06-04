@@ -63,10 +63,213 @@ businessPOS is a comprehensive point of sale system designed specifically for sm
 ## Technical Architecture
 
 - **Frontend**: React.js with HeroUI components and TailwindCSS
-- **Database**: SQLite with Drizzle ORM for data management
-- **State Management**: React Context API and hooks
+- **Database**: Turso SQLite with cloud sync capabilities
+- **State Management**: Zustand for efficient state management
 - **Offline Support**: IndexedDB for local data storage
 - **Printing**: Browser-based printing with thermal printer support
+
+## 🎯 **Function Key Shortcuts**
+
+The POS system includes comprehensive keyboard shortcuts for efficient operations:
+
+- **F2**: Change Quantity - Modify item quantity in cart
+- **F3**: Item Discount - Apply discount to selected item
+- **F4**: Remove Item - Remove selected item from cart
+- **F7**: Bill Tax - Apply tax to entire bill
+- **F9**: Bill Discount - Apply discount to entire bill
+- **F10**: Loyalty Points - Access loyalty points features
+- **F12**: Remarks - Add remarks to the bill
+- **Ctrl+F**: Product Search - Open product search dialog
+- **Ctrl+T**: New Bill - Start a new transaction
+- **Ctrl+P**: Process Payment - Complete the transaction
+- **Ctrl+B**: Partial Payment - Handle partial payments
+- **Ctrl+M**: Multi Payment - Multiple payment methods
+- **Escape**: Cancel/Close - Close dialogs and cancel operations
+
+## 🔐 **Security Features**
+
+- **Data Encryption**: All sensitive data encrypted at rest
+- **Secure Authentication**: JWT-based user authentication
+- **Role-based Access**: Granular permission system
+- **Audit Logging**: Complete transaction audit trail
+- **Backup & Recovery**: Automated daily backups
+- **HTTPS Only**: Secure data transmission
+
+## 📱 **Mobile Optimization**
+
+The application is fully responsive and optimized for:
+- **Android Tablets** (recommended for POS operations)
+- **iPads** and iOS devices
+- **Mobile phones** (for basic operations)
+- **Desktop computers** (full feature access)
+
+### **Recommended Hardware**
+- **Tablet**: 10-inch Android tablet with 4GB RAM
+- **Printer**: Thermal receipt printer with USB/Bluetooth
+- **Scanner**: USB or Bluetooth barcode scanner
+- **Cash Drawer**: Compatible with thermal printer
+
+## 🛠️ **Installation & Setup**
+
+### **Prerequisites**
+- Node.js (v18.0 or higher)
+- npm or yarn package manager
+- Git for version control
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+
+### **Quick Start**
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/businesspos.git
+cd businesspos
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start development server
+npm run dev
+```
+
+### **Environment Configuration**
+Create a `.env` file in the root directory:
+```env
+# Database Configuration
+DATABASE_URL="your_turso_database_url"
+TURSO_AUTH_TOKEN="your_turso_auth_token"
+
+# Application Configuration
+VITE_APP_NAME="BusinessPOS"
+VITE_APP_VERSION="1.0.0"
+VITE_API_BASE_URL="http://localhost:3000/api"
+
+# Payment Gateway Configuration (Optional)
+VITE_UPI_MERCHANT_ID="your_upi_merchant_id"
+VITE_PAYMENT_GATEWAY_KEY="your_payment_gateway_key"
+
+# WhatsApp Integration (Optional)
+VITE_WHATSAPP_API_KEY="your_whatsapp_api_key"
+```
+
+## 🚀 **Deployment**
+
+### **Production Build**
+```bash
+npm run build
+```
+
+### **Deploy to Vercel**
+1. Install Vercel CLI: `npm i -g vercel`
+2. Run: `vercel`
+3. Follow the prompts to deploy
+
+### **Deploy to Netlify**
+1. Build the project: `npm run build`
+2. Upload the `dist` folder to Netlify
+3. Configure environment variables
+
+### **Deploy to Your Own Server**
+1. Build the project: `npm run build`
+2. Upload the `dist` folder to your web server
+3. Configure SSL certificate for HTTPS
+
+## 📊 **Database Schema**
+
+### **Core Tables**
+```sql
+-- Products table
+CREATE TABLE products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT,
+  price REAL NOT NULL,
+  cost REAL,
+  stock INTEGER DEFAULT 0,
+  min_stock INTEGER DEFAULT 5,
+  hsn TEXT,
+  tax_rate REAL DEFAULT 18,
+  barcode TEXT UNIQUE,
+  is_active BOOLEAN DEFAULT true,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Customers table
+CREATE TABLE customers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT UNIQUE,
+  email TEXT,
+  address TEXT,
+  city TEXT,
+  state TEXT,
+  gstin TEXT,
+  total_orders INTEGER DEFAULT 0,
+  total_spent REAL DEFAULT 0,
+  loyalty_points INTEGER DEFAULT 0,
+  tier TEXT DEFAULT 'bronze',
+  status TEXT DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Transactions table
+CREATE TABLE transactions (
+  id TEXT PRIMARY KEY,
+  invoice_number TEXT UNIQUE NOT NULL,
+  customer_id TEXT,
+  total REAL NOT NULL,
+  subtotal REAL NOT NULL,
+  tax_amount REAL DEFAULT 0,
+  discount REAL DEFAULT 0,
+  payment_method TEXT NOT NULL,
+  payment_status TEXT DEFAULT 'paid',
+  amount_received REAL DEFAULT 0,
+  change_amount REAL DEFAULT 0,
+  pending_amount REAL DEFAULT 0,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (customer_id) REFERENCES customers (id)
+);
+```
+
+## 🆘 **Support & Documentation**
+
+### **Getting Help**
+- **Documentation**: Comprehensive user guides available
+- **Video Tutorials**: Step-by-step setup and usage videos
+- **Community Forum**: Connect with other users
+- **Email Support**: Direct support for technical issues
+
+### **Common Issues**
+1. **Database Connection**: Check your Turso credentials
+2. **Payment Gateway**: Verify API keys and configuration
+3. **Printer Issues**: Ensure proper driver installation
+4. **Mobile Access**: Use HTTPS for mobile device access
+
+## 📄 **License**
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 **Contributing**
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+## 📞 **Contact**
+
+- **Website**: [businesspos.com](https://businesspos.com)
+- **Email**: support@businesspos.com
+- **Phone**: +91 9333 911 911
+- **Address**: Mumbai, Maharashtra, India
+
+---
+
+**Built with ❤️ for Indian Small Businesses**
+
+*Empowering entrepreneurs with modern technology while respecting traditional business practices.*
 
 ## Deployment Instructions
 

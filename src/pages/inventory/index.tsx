@@ -16,6 +16,12 @@ import {
   Pagination,
   Card,
   Spinner,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Textarea,
   useDisclosure,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -40,6 +46,8 @@ export const InventoryPage: React.FC = () => {
     isExporting,
     loadProducts,
     loadCategories,
+    addProduct,
+    updateProduct,
     setSearchQuery,
     setSelectedCategory,
     setSortBy,
@@ -54,6 +62,21 @@ export const InventoryPage: React.FC = () => {
     onOpenChange: onUploadOpenChange,
   } = useDisclosure();
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [editingProduct, setEditingProduct] = React.useState<any>(null);
+  const [showEditModal, setShowEditModal] = React.useState(false);
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const [newProduct, setNewProduct] = React.useState({
+    name: "",
+    category: "",
+    price: 0,
+    cost: 0,
+    stock: 0,
+    minStock: 5,
+    hsn: "",
+    taxRate: 18,
+    barcode: "",
+    description: "",
+  });
 
   const rowsPerPage = 10;
 
@@ -91,6 +114,101 @@ export const InventoryPage: React.FC = () => {
       } catch (error) {
         console.error("Delete failed:", error);
       }
+    }
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
+
+  const handleSaveProduct = async () => {
+    if (!editingProduct) return;
+
+    try {
+      console.log("Updating product with data:", editingProduct);
+
+      // Call the update product API
+      const updatedProduct = await updateProduct(editingProduct.id, {
+        name: editingProduct.name,
+        category: editingProduct.category,
+        price: editingProduct.price,
+        cost: editingProduct.cost,
+        stock: editingProduct.stock,
+        minStock: editingProduct.minStock,
+        hsn: editingProduct.hsn,
+        taxRate: editingProduct.taxRate,
+        barcode: editingProduct.barcode,
+        description: editingProduct.description,
+      });
+
+      console.log("Product updated successfully:", updatedProduct);
+
+      setShowEditModal(false);
+      setEditingProduct(null);
+
+      // Force reload products to see changes
+      await loadProducts();
+
+      alert("Product updated successfully!");
+    } catch (error) {
+      console.error("Update failed:", error);
+      alert("Failed to update product. Please try again.");
+    }
+  };
+
+  const handleAddProduct = async () => {
+    try {
+      // Validate required fields
+      if (!newProduct.name || !newProduct.category || newProduct.price <= 0) {
+        alert(
+          "Please fill in all required fields (Name, Category, and Price must be greater than 0)"
+        );
+        return;
+      }
+
+      console.log("Adding new product:", newProduct);
+
+      // Call the add product API
+      const addedProduct = await addProduct({
+        name: newProduct.name,
+        category: newProduct.category,
+        price: newProduct.price,
+        cost: newProduct.cost,
+        stock: newProduct.stock,
+        minStock: newProduct.minStock,
+        hsn: newProduct.hsn,
+        taxRate: newProduct.taxRate,
+        barcode: newProduct.barcode,
+        description: newProduct.description,
+        isActive: true,
+        unit: "pcs", // Default unit
+        maxStock: 1000, // Default max stock
+      });
+
+      console.log("Product added successfully:", addedProduct);
+
+      setShowAddModal(false);
+      setNewProduct({
+        name: "",
+        category: "",
+        price: 0,
+        cost: 0,
+        stock: 0,
+        minStock: 5,
+        hsn: "",
+        taxRate: 18,
+        barcode: "",
+        description: "",
+      });
+
+      // Force reload products to see changes
+      await loadProducts();
+
+      alert("Product added successfully!");
+    } catch (error) {
+      console.error("Add product failed:", error);
+      alert("Failed to add product. Please try again.");
     }
   };
 
@@ -140,7 +258,11 @@ export const InventoryPage: React.FC = () => {
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
-          <Button color="primary" startContent={<Icon icon="lucide:plus" />}>
+          <Button
+            color="primary"
+            startContent={<Icon icon="lucide:plus" />}
+            onPress={() => setShowAddModal(true)}
+          >
             Add Product
           </Button>
         </div>
@@ -302,7 +424,12 @@ export const InventoryPage: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Button isIconOnly size="sm" variant="light">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="light"
+                      onPress={() => handleEditProduct(product)}
+                    >
                       <Icon icon="lucide:edit" />
                     </Button>
                     <Button
@@ -327,6 +454,259 @@ export const InventoryPage: React.FC = () => {
         isOpen={isUploadOpen}
         onClose={() => onUploadOpenChange()}
       />
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <Modal
+          isOpen={showEditModal}
+          onOpenChange={setShowEditModal}
+          size="2xl"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Edit Product</ModalHeader>
+                <ModalBody>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Product Name"
+                      value={editingProduct.name || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({ ...editingProduct, name: value })
+                      }
+                      isRequired
+                    />
+                    <Input
+                      label="Category"
+                      value={editingProduct.category || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          category: value,
+                        })
+                      }
+                    />
+                    <Input
+                      label="Price"
+                      type="number"
+                      value={editingProduct.price?.toString() || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          price: parseFloat(value) || 0,
+                        })
+                      }
+                      startContent="₹"
+                    />
+                    <Input
+                      label="Cost"
+                      type="number"
+                      value={editingProduct.cost?.toString() || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          cost: parseFloat(value) || 0,
+                        })
+                      }
+                      startContent="₹"
+                    />
+                    <Input
+                      label="Stock"
+                      type="number"
+                      value={editingProduct.stock?.toString() || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          stock: parseInt(value) || 0,
+                        })
+                      }
+                    />
+                    <Input
+                      label="Min Stock"
+                      type="number"
+                      value={editingProduct.minStock?.toString() || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          minStock: parseInt(value) || 0,
+                        })
+                      }
+                    />
+                    <Input
+                      label="HSN Code"
+                      value={editingProduct.hsn || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({ ...editingProduct, hsn: value })
+                      }
+                    />
+                    <Input
+                      label="Tax Rate (%)"
+                      type="number"
+                      value={editingProduct.taxRate?.toString() || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          taxRate: parseFloat(value) || 0,
+                        })
+                      }
+                      endContent="%"
+                    />
+                    <Input
+                      label="Barcode"
+                      value={editingProduct.barcode || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct({ ...editingProduct, barcode: value })
+                      }
+                      className="md:col-span-2"
+                    />
+                  </div>
+                  <Textarea
+                    label="Description"
+                    value={editingProduct.description || ""}
+                    onValueChange={(value) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        description: value,
+                      })
+                    }
+                    className="mt-4"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="flat" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button color="primary" onPress={handleSaveProduct}>
+                    Update Product
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Add Product Modal */}
+      <Modal isOpen={showAddModal} onOpenChange={setShowAddModal} size="2xl">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Add New Product</ModalHeader>
+              <ModalBody>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Product Name"
+                    value={newProduct.name}
+                    onValueChange={(value) =>
+                      setNewProduct({ ...newProduct, name: value })
+                    }
+                    isRequired
+                  />
+                  <Input
+                    label="Category"
+                    value={newProduct.category}
+                    onValueChange={(value) =>
+                      setNewProduct({ ...newProduct, category: value })
+                    }
+                    isRequired
+                  />
+                  <Input
+                    label="Price"
+                    type="number"
+                    value={newProduct.price.toString()}
+                    onValueChange={(value) =>
+                      setNewProduct({
+                        ...newProduct,
+                        price: parseFloat(value) || 0,
+                      })
+                    }
+                    startContent="₹"
+                    isRequired
+                  />
+                  <Input
+                    label="Cost"
+                    type="number"
+                    value={newProduct.cost.toString()}
+                    onValueChange={(value) =>
+                      setNewProduct({
+                        ...newProduct,
+                        cost: parseFloat(value) || 0,
+                      })
+                    }
+                    startContent="₹"
+                  />
+                  <Input
+                    label="Stock"
+                    type="number"
+                    value={newProduct.stock.toString()}
+                    onValueChange={(value) =>
+                      setNewProduct({
+                        ...newProduct,
+                        stock: parseInt(value) || 0,
+                      })
+                    }
+                    isRequired
+                  />
+                  <Input
+                    label="Min Stock"
+                    type="number"
+                    value={newProduct.minStock.toString()}
+                    onValueChange={(value) =>
+                      setNewProduct({
+                        ...newProduct,
+                        minStock: parseInt(value) || 0,
+                      })
+                    }
+                  />
+                  <Input
+                    label="HSN Code"
+                    value={newProduct.hsn}
+                    onValueChange={(value) =>
+                      setNewProduct({ ...newProduct, hsn: value })
+                    }
+                  />
+                  <Input
+                    label="Tax Rate (%)"
+                    type="number"
+                    value={newProduct.taxRate.toString()}
+                    onValueChange={(value) =>
+                      setNewProduct({
+                        ...newProduct,
+                        taxRate: parseFloat(value) || 0,
+                      })
+                    }
+                    endContent="%"
+                  />
+                  <Input
+                    label="Barcode"
+                    value={newProduct.barcode}
+                    onValueChange={(value) =>
+                      setNewProduct({ ...newProduct, barcode: value })
+                    }
+                    className="md:col-span-2"
+                  />
+                </div>
+                <Textarea
+                  label="Description"
+                  value={newProduct.description}
+                  onValueChange={(value) =>
+                    setNewProduct({ ...newProduct, description: value })
+                  }
+                  className="mt-4"
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button color="primary" onPress={handleAddProduct}>
+                  Add Product
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
