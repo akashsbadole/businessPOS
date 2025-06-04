@@ -1,7 +1,9 @@
 import React from "react";
-import { Button, Card, CardBody, Chip } from "@heroui/react";
+import { Button, Card, CardBody, Chip, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { NetworkStatus } from "../common/network-status";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 
 interface VoiceSearchProps {
   onResult: (text: string) => void;
@@ -17,174 +19,92 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
   products = [],
   language = "en-IN",
 }) => {
-  const [isListening, setIsListening] = React.useState(false);
-  const [transcript, setTranscript] = React.useState("");
   const [lastAction, setLastAction] = React.useState("");
-  const [isSupported, setIsSupported] = React.useState(false);
-  const [confidence, setConfidence] = React.useState(0);
-  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+  const [manualSearch, setManualSearch] = React.useState("");
+  const [showManualSearch, setShowManualSearch] = React.useState(false);
 
+  // Use react-speech-recognition for more reliable speech recognition
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable,
+  } = useSpeechRecognition();
+
+  // Process voice commands when transcript changes
   React.useEffect(() => {
-    // Check if speech recognition is supported
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setIsSupported(true);
+    if (transcript) {
+      console.log("🎤 Voice transcript:", transcript);
+      onResult(transcript);
 
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = language;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setTranscript("");
-      };
-
-      recognition.onresult = (event) => {
-        let finalTranscript = "";
-        let interimTranscript = "";
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-            setConfidence(result[0].confidence);
-          } else {
-            interimTranscript += result[0].transcript;
-          }
-        }
-
-        const fullTranscript = finalTranscript || interimTranscript;
-        setTranscript(fullTranscript);
-
-        if (finalTranscript) {
-          const searchText = finalTranscript.trim();
-          onResult(searchText);
-
-          // Process voice command for product search
-          const result = processProductVoiceCommand(
-            searchText,
-            products,
-            onProductFound
-          );
-          if (result) {
-            setLastAction(result);
-            // Clear the action message after 3 seconds
-            setTimeout(() => setLastAction(""), 3000);
-          }
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-
-        // Handle specific errors
-        switch (event.error) {
-          case "network":
-            setTranscript(
-              "🌐 Network Error: Voice recognition needs internet. You can still search products manually by typing."
-            );
-            setLastAction("Try typing product names instead");
-            // Auto-clear after 5 seconds
-            setTimeout(() => {
-              setTranscript("");
-              setLastAction("");
-            }, 5000);
-            break;
-          case "no-speech":
-            setTranscript("No speech detected. Please try again.");
-            break;
-          case "audio-capture":
-            setTranscript(
-              "Microphone not accessible. Please check permissions."
-            );
-            break;
-          case "not-allowed":
-            setTranscript(
-              "Microphone permission denied. Please allow microphone access in your browser settings."
-            );
-            break;
-          case "service-not-allowed":
-            setTranscript(
-              "Speech recognition service not allowed. Please use HTTPS or localhost."
-            );
-            break;
-          case "bad-grammar":
-            setTranscript(
-              "Speech recognition grammar error. Please try again."
-            );
-            break;
-          case "language-not-supported":
-            setTranscript(
-              "Selected language not supported. Please try English or Hindi."
-            );
-            break;
-          default:
-            setTranscript(
-              `Speech recognition error: ${event.error}. Please try again.`
-            );
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
+      // Process voice command for product search
+      const actionResult = processProductVoiceCommand(
+        transcript,
+        products,
+        onProductFound
+      );
+      if (actionResult) {
+        setLastAction(actionResult);
+        // Clear the action message after 5 seconds
+        setTimeout(() => setLastAction(""), 5000);
       }
-    };
-  }, [language, onResult]);
+    }
+  }, [transcript, products, onResult, onProductFound]);
 
   const startListening = () => {
-    if (recognitionRef.current && !isListening) {
-      try {
-        // Check if we're on HTTPS or localhost
-        const isSecure =
-          window.location.protocol === "https:" ||
-          window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1";
-
-        if (!isSecure) {
-          console.error("Voice recognition requires HTTPS or localhost");
-          return;
-        }
-
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error("Failed to start speech recognition:", error);
-        // Provide user-friendly error message
-        if (error.message && error.message.includes("network")) {
-          console.error(
-            "Network error: Please check your internet connection and try again"
-          );
-        }
-      }
+    if (!browserSupportsSpeechRecognition) {
+      setLastAction("Speech recognition not supported in this browser");
+      setShowManualSearch(true);
+      return;
     }
+
+    if (!isMicrophoneAvailable) {
+      setLastAction("Microphone not available. Please check permissions.");
+      setShowManualSearch(true);
+      return;
+    }
+
+    resetTranscript();
+    SpeechRecognition.startListening({
+      continuous: false,
+      language: language,
+    });
   };
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-    }
+    SpeechRecognition.stopListening();
   };
 
   const toggleListening = () => {
-    if (isListening) {
+    if (listening) {
       stopListening();
     } else {
       startListening();
     }
   };
 
-  if (!isSupported) {
+  const handleManualSearch = (searchText: string) => {
+    if (!searchText.trim()) return;
+
+    // Process manual search the same way as voice search
+    const result = processProductVoiceCommand(
+      searchText.trim(),
+      products,
+      onProductFound
+    );
+
+    if (result) {
+      setLastAction(result);
+      setManualSearch(""); // Clear the input
+      setTimeout(() => setLastAction(""), 3000);
+    } else {
+      setLastAction(`Product "${searchText}" not found`);
+      setTimeout(() => setLastAction(""), 3000);
+    }
+  };
+
+  if (!browserSupportsSpeechRecognition) {
     return (
       <Card className="w-full max-w-md">
         <CardBody className="text-center">
@@ -216,30 +136,76 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Network Status */}
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-600">Voice Search</span>
-        <NetworkStatus showLabel={true} />
+        <span className="text-sm text-gray-600">Product Search</span>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="flat"
+            onPress={() => setShowManualSearch(!showManualSearch)}
+            startContent={<Icon icon="lucide:keyboard" />}
+          >
+            Type
+          </Button>
+          <Chip
+            size="sm"
+            color={navigator.onLine ? "success" : "danger"}
+            variant="flat"
+          >
+            {navigator.onLine ? "Online" : "Offline"}
+          </Chip>
+        </div>
       </div>
 
       {/* Voice Control Button */}
       <Button
-        color={isListening ? "danger" : "primary"}
-        variant={isListening ? "solid" : "flat"}
+        color={listening ? "danger" : "primary"}
+        variant={listening ? "solid" : "flat"}
         onPress={toggleListening}
         startContent={
           <Icon
-            icon={isListening ? "lucide:mic" : "lucide:mic-off"}
-            className={isListening ? "animate-pulse" : ""}
+            icon={listening ? "lucide:mic" : "lucide:mic-off"}
+            className={listening ? "animate-pulse" : ""}
           />
         }
         className="w-full"
       >
-        {isListening ? "Stop Listening" : "Start Voice Search"}
+        {listening ? "Stop Listening" : "Start Voice Search"}
       </Button>
 
+      {/* Manual Search Input - Show when voice fails or user prefers typing */}
+      {(showManualSearch || !browserSupportsSpeechRecognition) && (
+        <div className="mt-3">
+          <Input
+            placeholder="Type product name (e.g., rice, chawal, 2 milk)"
+            value={manualSearch}
+            onValueChange={setManualSearch}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleManualSearch(manualSearch);
+              }
+            }}
+            endContent={
+              <Button
+                size="sm"
+                color="primary"
+                variant="flat"
+                onPress={() => handleManualSearch(manualSearch)}
+                isDisabled={!manualSearch.trim()}
+              >
+                <Icon icon="lucide:search" />
+              </Button>
+            }
+            startContent={<Icon icon="lucide:type" className="text-gray-400" />}
+            label="Manual Product Search"
+            description="Type product name or quantity + name (e.g., '2 milk')"
+          />
+        </div>
+      )}
+
       {/* Voice Status */}
-      {isListening && (
+      {listening && (
         <Card>
           <CardBody className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -274,23 +240,6 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
               <div className="flex-1">
                 <p className="text-sm font-medium mb-1">Voice Input:</p>
                 <p className="text-sm text-gray-700">{transcript}</p>
-                {confidence > 0 && (
-                  <div className="mt-2">
-                    <Chip
-                      size="sm"
-                      color={
-                        confidence > 0.8
-                          ? "success"
-                          : confidence > 0.6
-                          ? "warning"
-                          : "danger"
-                      }
-                      variant="flat"
-                    >
-                      Confidence: {Math.round(confidence * 100)}%
-                    </Chip>
-                  </div>
-                )}
               </div>
             </div>
           </CardBody>
@@ -317,27 +266,30 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
           </h4>
           <div className="space-y-1 text-xs text-gray-600">
             <p>
-              • <strong>Product Search & Add:</strong>
+              • <strong>ADD Commands (Recommended):</strong>
             </p>
-            <p className="ml-4">- "Rice" / "Chawal" - Add 1 rice to cart</p>
-            <p className="ml-4">- "2 milk chahiye" - Add 2 milk to cart</p>
+            <p className="ml-4">- "Add milk" - Add 1 milk to cart</p>
+            <p className="ml-4">- "Add 2 milk" - Add 2 milk to cart</p>
+            <p className="ml-4">- "Add biscuits" - Add 1 biscuit to cart</p>
             <p className="ml-4">- "Add 3 bread" - Add 3 bread to cart</p>
             <p>
-              • <strong>Other Commands:</strong>
+              • <strong>Simple Commands:</strong>
             </p>
-            <p className="ml-4">- "Show total" - Display bill total</p>
-            <p className="ml-4">- "Print receipt" - Print invoice</p>
-            <p className="ml-4">- "New bill" - Start new transaction</p>
-            <div className="mt-2 p-2 bg-blue-50 rounded">
-              <p className="text-blue-700 text-xs font-medium">
-                🎯 Voice Search for Products:
+            <p className="ml-4">- "Milk" - Add 1 milk to cart</p>
+            <p className="ml-4">- "2 milk" - Add 2 milk to cart</p>
+            <p className="ml-4">- "Chawal" - Add 1 rice to cart</p>
+            <div className="mt-2 p-2 bg-green-50 rounded">
+              <p className="text-green-700 text-xs font-medium">
+                🎯 Best Practice: Use "Add" Commands
               </p>
-              <p className="text-blue-600 text-xs">
-                Just say the product name in English or Hindi, and it will be
-                automatically added to your cart!
+              <p className="text-green-600 text-xs">
+                <strong>✅ Say:</strong> "Add milk", "Add 2 biscuits"
               </p>
-              <p className="text-blue-600 text-xs mt-1">
-                Supported: chawal, doodh, cheeni, tel, chai, etc.
+              <p className="text-green-600 text-xs">
+                <strong>🌐 Hindi:</strong> chawal, doodh, cheeni, tel, chai
+              </p>
+              <p className="text-green-600 text-xs">
+                <strong>⌨️ Backup:</strong> Use "Type" button if voice fails
               </p>
             </div>
           </div>
@@ -356,6 +308,7 @@ export const processProductVoiceCommand = (
   if (!products || products.length === 0 || !onProductFound) return;
 
   const lowerText = text.toLowerCase().trim();
+  console.log("🎤 Processing voice command:", lowerText);
 
   // Common product name corrections (Hindi to English)
   const productCorrections: Record<string, string> = {
@@ -373,34 +326,35 @@ export const processProductVoiceCommand = (
     sabun: "soap",
     shampoo: "shampoo",
     biscuit: "biscuit",
+    biscuits: "biscuit",
     coffee: "coffee",
     paani: "water",
     juice: "juice",
   };
 
-  // Extract quantity and product name patterns
-  const quantityPatterns = [
-    /(\d+)\s+(.+?)(?:\s+(?:please|chahiye|daal do|add karo|lao))?$/,
-    /(.+?)\s+(\d+)\s*(?:piece|pieces|kg|gram|liter|bottle)?$/,
-    /add\s+(\d+)\s+(.+)/,
-    /(.+?)\s+(\d+)\s+chahiye/,
-    /(\d+)\s+(.+?)\s+chahiye/,
+  // Enhanced patterns for "add" commands - prioritize these
+  const addPatterns = [
+    { pattern: /^add\s+(\d+)\s+(.+)$/, type: "add_quantity_product" }, // "add 2 milk"
+    { pattern: /^add\s+(.+?)\s+(\d+)$/, type: "add_product_quantity" }, // "add milk 2"
+    { pattern: /^add\s+(.+)$/, type: "add_product" }, // "add milk"
   ];
 
-  // Try to extract quantity and product name
-  for (const pattern of quantityPatterns) {
+  // Check for "add" commands first
+  for (const { pattern, type } of addPatterns) {
     const match = lowerText.match(pattern);
     if (match) {
       let quantity = 1;
       let productName = "";
 
-      // Check if first group is number or product name
-      if (!isNaN(parseInt(match[1]))) {
+      if (type === "add_quantity_product") {
         quantity = parseInt(match[1]);
         productName = match[2];
-      } else {
+      } else if (type === "add_product_quantity") {
         productName = match[1];
         quantity = parseInt(match[2]) || 1;
+      } else if (type === "add_product") {
+        productName = match[1];
+        quantity = 1;
       }
 
       // Clean product name
@@ -411,78 +365,162 @@ export const processProductVoiceCommand = (
         )
         .trim();
 
+      console.log("🔍 Extracted:", { productName, quantity, type });
+
       // Convert Hindi product names
       for (const [hindi, english] of Object.entries(productCorrections)) {
         if (productName.includes(hindi)) {
           productName = productName.replace(hindi, english);
+          console.log("🌐 Translated:", hindi, "→", english);
+          break;
         }
       }
 
       // Search for product
       const foundProduct = findProduct(productName, products);
       if (foundProduct) {
+        console.log("✅ Found product:", foundProduct.name);
+        onProductFound(foundProduct, quantity);
+        return `Adding ${quantity} ${foundProduct.name} to cart`;
+      } else {
+        console.log("❌ Product not found:", productName);
+      }
+    }
+  }
+
+  // Fallback patterns for other formats
+  const fallbackPatterns = [
+    { pattern: /^(\d+)\s+(.+)$/, type: "quantity_product" }, // "2 milk"
+    { pattern: /^(.+?)\s+(\d+)$/, type: "product_quantity" }, // "milk 2"
+    { pattern: /^(.+)$/, type: "product_only" }, // "milk"
+  ];
+
+  for (const { pattern, type } of fallbackPatterns) {
+    const match = lowerText.match(pattern);
+    if (match) {
+      let quantity = 1;
+      let productName = "";
+
+      if (type === "quantity_product") {
+        quantity = parseInt(match[1]);
+        productName = match[2];
+      } else if (type === "product_quantity") {
+        productName = match[1];
+        quantity = parseInt(match[2]) || 1;
+      } else if (type === "product_only") {
+        productName = match[1];
+        quantity = 1;
+      }
+
+      // Clean product name
+      productName = productName
+        .replace(
+          /\b(please|now|to cart|chahiye|daal do|add karo|lao|dikhao|search|find)\b/g,
+          ""
+        )
+        .trim();
+
+      console.log("🔍 Fallback extracted:", { productName, quantity, type });
+
+      // Convert Hindi product names
+      for (const [hindi, english] of Object.entries(productCorrections)) {
+        if (productName.includes(hindi)) {
+          productName = productName.replace(hindi, english);
+          console.log("🌐 Translated:", hindi, "→", english);
+          break;
+        }
+      }
+
+      // Search for product
+      const foundProduct = findProduct(productName, products);
+      if (foundProduct) {
+        console.log("✅ Found product:", foundProduct.name);
         onProductFound(foundProduct, quantity);
         return `Adding ${quantity} ${foundProduct.name} to cart`;
       }
     }
   }
 
-  // Simple product search without quantity
-  let searchTerm = lowerText
-    .replace(/\b(search|find|show|dikhao|lao|chahiye|add)\b/g, "")
-    .trim();
-
-  // Convert Hindi product names
-  for (const [hindi, english] of Object.entries(productCorrections)) {
-    if (searchTerm.includes(hindi)) {
-      searchTerm = searchTerm.replace(hindi, english);
-    }
-  }
-
-  // Search for product
-  const foundProduct = findProduct(searchTerm, products);
-  if (foundProduct) {
-    onProductFound(foundProduct, 1);
-    return `Adding ${foundProduct.name} to cart`;
-  }
-
-  return `Product "${searchTerm}" not found`;
+  console.log("❌ No product found for:", lowerText);
+  return `Product "${lowerText}" not found`;
 };
 
 // Helper function to find product by name
 const findProduct = (searchTerm: string, products: any[]) => {
   if (!searchTerm || !products) return null;
 
+  console.log("🔍 Searching for product:", searchTerm);
+  console.log(
+    "📦 Available products:",
+    products.map((p) => p.name)
+  );
+
   // Exact match first
   let found = products.find(
     (p) => p.name.toLowerCase() === searchTerm.toLowerCase()
   );
 
-  if (found) return found;
+  if (found) {
+    console.log("✅ Exact match found:", found.name);
+    return found;
+  }
 
-  // Partial match
-  found = products.find(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      searchTerm.toLowerCase().includes(p.name.toLowerCase())
+  // Partial match - product name contains search term
+  found = products.find((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (found) return found;
+  if (found) {
+    console.log("✅ Partial match found:", found.name);
+    return found;
+  }
 
-  // Fuzzy match for common variations
+  // Reverse partial match - search term contains product name
+  found = products.find((p) =>
+    searchTerm.toLowerCase().includes(p.name.toLowerCase())
+  );
+
+  if (found) {
+    console.log("✅ Reverse partial match found:", found.name);
+    return found;
+  }
+
+  // Word-based fuzzy match
   found = products.find((p) => {
-    const productWords = p.name.toLowerCase().split(" ");
-    const searchWords = searchTerm.toLowerCase().split(" ");
+    const productWords = p.name.toLowerCase().split(/\s+/);
+    const searchWords = searchTerm.toLowerCase().split(/\s+/);
 
     return searchWords.some((searchWord) =>
       productWords.some(
         (productWord) =>
-          productWord.includes(searchWord) || searchWord.includes(productWord)
+          productWord.includes(searchWord) ||
+          searchWord.includes(productWord) ||
+          productWord.startsWith(searchWord) ||
+          searchWord.startsWith(productWord)
       )
     );
   });
 
-  return found;
+  if (found) {
+    console.log("✅ Fuzzy match found:", found.name);
+    return found;
+  }
+
+  // Last resort: very loose matching
+  found = products.find((p) => {
+    const productName = p.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const searchName = searchTerm.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    return productName.includes(searchName) || searchName.includes(productName);
+  });
+
+  if (found) {
+    console.log("✅ Loose match found:", found.name);
+    return found;
+  }
+
+  console.log("❌ No match found for:", searchTerm);
+  return null;
 };
 
 // Voice command processor with enhanced Hindi support
@@ -614,67 +652,3 @@ export const processVoiceCommand = (
   actions.searchProduct(text);
   return `Searching for "${text}"`;
 };
-
-// Extend Window interface for TypeScript
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-
-  interface SpeechRecognition extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    maxAlternatives: number;
-    start(): void;
-    stop(): void;
-    abort(): void;
-    onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-    onresult:
-      | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any)
-      | null;
-    onerror:
-      | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any)
-      | null;
-    onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  }
-
-  interface SpeechRecognitionEvent extends Event {
-    resultIndex: number;
-    results: SpeechRecognitionResultList;
-  }
-
-  interface SpeechRecognitionResultList {
-    length: number;
-    item(index: number): SpeechRecognitionResult;
-    [index: number]: SpeechRecognitionResult;
-  }
-
-  interface SpeechRecognitionResult {
-    length: number;
-    item(index: number): SpeechRecognitionAlternative;
-    [index: number]: SpeechRecognitionAlternative;
-    isFinal: boolean;
-  }
-
-  interface SpeechRecognitionAlternative {
-    transcript: string;
-    confidence: number;
-  }
-
-  interface SpeechRecognitionErrorEvent extends Event {
-    error: string;
-    message: string;
-  }
-
-  var SpeechRecognition: {
-    prototype: SpeechRecognition;
-    new (): SpeechRecognition;
-  };
-
-  var webkitSpeechRecognition: {
-    prototype: SpeechRecognition;
-    new (): SpeechRecognition;
-  };
-}
