@@ -5,6 +5,15 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 
+// Initialize speech recognition on module load
+if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
+  console.log("🎤 Speech Recognition API available");
+} else if (typeof window !== "undefined" && "SpeechRecognition" in window) {
+  console.log("🎤 Speech Recognition API available");
+} else {
+  console.warn("🎤 Speech Recognition API not available");
+}
+
 interface VoiceSearchProps {
   onResult: (text: string) => void;
   onProductFound?: (product: any, quantity?: number) => void;
@@ -22,6 +31,7 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
   const [lastAction, setLastAction] = React.useState("");
   const [manualSearch, setManualSearch] = React.useState("");
   const [showManualSearch, setShowManualSearch] = React.useState(false);
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
   // Use react-speech-recognition for more reliable speech recognition
   const {
@@ -30,12 +40,43 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
     resetTranscript,
     browserSupportsSpeechRecognition,
     isMicrophoneAvailable,
-  } = useSpeechRecognition();
+  } = useSpeechRecognition({
+    clearTranscriptOnListen: true,
+  });
+
+  // Initialize speech recognition
+  React.useEffect(() => {
+    const initializeSpeechRecognition = async () => {
+      console.log("🎤 Initializing speech recognition...");
+      console.log("🎤 Browser support:", browserSupportsSpeechRecognition);
+      console.log("🎤 Microphone available:", isMicrophoneAvailable);
+      console.log("🎤 Language:", language);
+      console.log("🎤 Products available:", products.length);
+
+      if (browserSupportsSpeechRecognition) {
+        setIsInitialized(true);
+        setLastAction(
+          "Voice search ready! Click the microphone button to start."
+        );
+        setTimeout(() => setLastAction(""), 3000);
+      } else {
+        setLastAction("Speech recognition not supported in this browser");
+        setShowManualSearch(true);
+      }
+    };
+
+    initializeSpeechRecognition();
+  }, [
+    browserSupportsSpeechRecognition,
+    isMicrophoneAvailable,
+    language,
+    products.length,
+  ]);
 
   // Process voice commands when transcript changes
   React.useEffect(() => {
-    if (transcript) {
-      console.log("🎤 Voice transcript:", transcript);
+    if (transcript && transcript.trim()) {
+      console.log("🎤 Voice transcript received:", transcript);
       onResult(transcript);
 
       // Process voice command for product search
@@ -52,24 +93,47 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
     }
   }, [transcript, products, onResult, onProductFound]);
 
-  const startListening = () => {
+  const startListening = async () => {
     if (!browserSupportsSpeechRecognition) {
       setLastAction("Speech recognition not supported in this browser");
       setShowManualSearch(true);
       return;
     }
 
-    if (!isMicrophoneAvailable) {
-      setLastAction("Microphone not available. Please check permissions.");
+    // Check for HTTPS or localhost
+    const isSecure =
+      window.location.protocol === "https:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    if (!isSecure) {
+      setLastAction(
+        "Voice search requires HTTPS connection. Please use HTTPS or localhost."
+      );
       setShowManualSearch(true);
       return;
     }
 
-    resetTranscript();
-    SpeechRecognition.startListening({
-      continuous: false,
-      language: language,
-    });
+    try {
+      // Request microphone permission explicitly
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      resetTranscript();
+      setLastAction(""); // Clear any previous error messages
+
+      SpeechRecognition.startListening({
+        continuous: false,
+        language: language,
+      });
+
+      console.log("🎤 Started listening with language:", language);
+    } catch (error) {
+      console.error("🎤 Microphone access error:", error);
+      setLastAction(
+        "Microphone access denied. Please allow microphone permissions and try again."
+      );
+      setShowManualSearch(true);
+    }
   };
 
   const stopListening = () => {
@@ -147,6 +211,25 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
             startContent={<Icon icon="lucide:keyboard" />}
           >
             Type
+          </Button>
+          <Button
+            size="sm"
+            variant="flat"
+            color="secondary"
+            onPress={() => {
+              console.log("🎤 Debug Info:");
+              console.log("Browser support:", browserSupportsSpeechRecognition);
+              console.log("Microphone available:", isMicrophoneAvailable);
+              console.log("Currently listening:", listening);
+              console.log("Current transcript:", transcript);
+              console.log("Products count:", products.length);
+              setLastAction(
+                `Debug: Support=${browserSupportsSpeechRecognition}, Mic=${isMicrophoneAvailable}, Listening=${listening}`
+              );
+            }}
+            startContent={<Icon icon="lucide:bug" />}
+          >
+            Debug
           </Button>
           <Chip
             size="sm"

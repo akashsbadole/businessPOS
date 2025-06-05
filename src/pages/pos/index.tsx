@@ -37,6 +37,7 @@ import {
   VoiceSearch,
   processVoiceCommand,
 } from "../../components/pos/voice-search";
+import { NativeVoiceSearch } from "../../components/pos/native-voice-search";
 import { CameraBarcodeScanner } from "../../components/pos/camera-barcode-scanner";
 
 export const POSPage: React.FC = () => {
@@ -1428,13 +1429,45 @@ export const POSPage: React.FC = () => {
 
       {/* Voice Search */}
       {showVoiceSearch && (
-        <div className="fixed bottom-4 right-4 z-50 w-80">
-          <VoiceSearch
-            onResult={handleVoiceResult}
-            onProductFound={handleVoiceProductFound}
-            products={products}
-            language="en-IN"
-          />
+        <div className="fixed bottom-4 right-4 z-50 w-80 space-y-4">
+          {/* React Speech Recognition Implementation */}
+          <div className="bg-white rounded-lg shadow-lg p-4 border">
+            <h3 className="text-sm font-medium mb-2 text-gray-700">
+              🎤 React Speech Recognition
+            </h3>
+            <VoiceSearch
+              onResult={handleVoiceResult}
+              onProductFound={handleVoiceProductFound}
+              products={products}
+              language="en-IN"
+            />
+          </div>
+
+          {/* Native Web Speech API Implementation */}
+          <div className="bg-white rounded-lg shadow-lg p-4 border">
+            <h3 className="text-sm font-medium mb-2 text-gray-700">
+              🎤 Native Web Speech API
+            </h3>
+            <NativeVoiceSearch
+              onResult={handleVoiceResult}
+              onProductFound={handleVoiceProductFound}
+              products={products}
+              language="en-IN"
+            />
+          </div>
+
+          {/* Close Button */}
+          <div className="text-center">
+            <Button
+              size="sm"
+              variant="flat"
+              color="danger"
+              onPress={() => setShowVoiceSearch(false)}
+              startContent={<Icon icon="lucide:x" />}
+            >
+              Close Voice Search
+            </Button>
+          </div>
         </div>
       )}
 

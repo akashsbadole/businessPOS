@@ -12,10 +12,13 @@ import {
   DropdownMenu,
   DropdownItem,
   Avatar,
+  useDisclosure,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAuth } from "../contexts/auth-context";
 import { useSubscription } from "../contexts/subscription-context";
+import { MobileNav } from "../components/navigation/mobile-nav";
+import { BottomNav } from "../components/navigation/bottom-nav";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,6 +29,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { subscription, daysRemaining } = useSubscription();
   const [isOffline, setIsOffline] = React.useState(false);
+  const {
+    isOpen: isMobileNavOpen,
+    onOpen: onMobileNavOpen,
+    onClose: onMobileNavClose,
+  } = useDisclosure();
 
   React.useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -68,18 +76,32 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-content2">
-      <Navbar isBordered maxWidth="2xl">
-        <NavbarBrand>
+      <Navbar isBordered maxWidth="2xl" className="lg:px-6">
+        {/* Mobile Menu Button */}
+        <NavbarContent className="lg:hidden" justify="start">
+          <Button
+            isIconOnly
+            variant="light"
+            onPress={onMobileNavOpen}
+            className="text-default-600"
+          >
+            <Icon icon="lucide:menu" className="text-xl" />
+          </Button>
+        </NavbarContent>
+
+        <NavbarBrand className="flex-grow lg:flex-grow-0">
           <div className="flex items-center gap-2">
             <Icon
               icon="lucide:shopping-bag"
               className="text-primary text-2xl"
             />
-            <p className="font-bold text-inherit">businessPOS</p>
+            <p className="font-bold text-inherit text-lg lg:text-xl">
+              businessPOS
+            </p>
           </div>
         </NavbarBrand>
 
-        <NavbarContent className="hidden sm:flex gap-4" justify="center">
+        <NavbarContent className="hidden lg:flex gap-4" justify="center">
           {navItems.map((item) => (
             <NavbarItem
               key={item.path}
@@ -199,7 +221,27 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </NavbarContent>
       </Navbar>
 
-      <main className="container mx-auto px-4 py-4 max-w-7xl">{children}</main>
+      {/* Mobile Navigation Drawer */}
+      <MobileNav
+        isOpen={isMobileNavOpen}
+        onClose={onMobileNavClose}
+        navItems={navItems}
+        user={user || undefined}
+        subscription={
+          subscription ? { ...subscription, daysRemaining } : undefined
+        }
+        onLogout={logout}
+      />
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-4 max-w-7xl pb-20 lg:pb-4">
+        {children}
+      </main>
+
+      {/* Bottom Navigation for Mobile */}
+      <div className="lg:hidden">
+        <BottomNav />
+      </div>
     </div>
   );
 };
