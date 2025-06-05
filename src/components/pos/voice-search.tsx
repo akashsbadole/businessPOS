@@ -95,7 +95,16 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
 
   const startListening = async () => {
     if (!browserSupportsSpeechRecognition) {
-      setLastAction("Speech recognition not supported in this browser");
+      setLastAction("❌ Speech recognition not supported in this browser");
+      setShowManualSearch(true);
+      return;
+    }
+
+    // Check network connectivity
+    if (!navigator.onLine) {
+      setLastAction(
+        "🌐 No internet connection detected. Please use manual search."
+      );
       setShowManualSearch(true);
       return;
     }
@@ -108,18 +117,26 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
 
     if (!isSecure) {
       setLastAction(
-        "Voice search requires HTTPS connection. Please use HTTPS or localhost."
+        "🔒 Voice search requires HTTPS connection. Please use manual search."
       );
       setShowManualSearch(true);
       return;
     }
 
     try {
-      // Request microphone permission explicitly
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone permission explicitly with timeout
+      const stream = (await Promise.race([
+        navigator.mediaDevices.getUserMedia({ audio: true }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Permission timeout")), 5000)
+        ),
+      ])) as MediaStream;
+
+      // Stop the stream as we just needed permission
+      stream.getTracks().forEach((track) => track.stop());
 
       resetTranscript();
-      setLastAction(""); // Clear any previous error messages
+      setLastAction("🎤 Starting voice recognition..."); // Clear any previous error messages
 
       SpeechRecognition.startListening({
         continuous: false,
@@ -127,11 +144,23 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({
       });
 
       console.log("🎤 Started listening with language:", language);
-    } catch (error) {
+    } catch (error: any) {
       console.error("🎤 Microphone access error:", error);
-      setLastAction(
-        "Microphone access denied. Please allow microphone permissions and try again."
-      );
+
+      if (error.name === "NotAllowedError") {
+        setLastAction(
+          "❌ Microphone permission denied. Please allow microphone access in browser settings."
+        );
+      } else if (error.name === "NotFoundError") {
+        setLastAction(
+          "🎤 No microphone found. Please connect a microphone and try again."
+        );
+      } else if (error.message === "Permission timeout") {
+        setLastAction("⏱️ Permission request timeout. Please try again.");
+      } else {
+        setLastAction("⚠️ Microphone error. Please use manual search instead.");
+      }
+
       setShowManualSearch(true);
     }
   };
