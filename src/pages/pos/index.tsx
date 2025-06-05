@@ -38,6 +38,7 @@ import {
   processVoiceCommand,
 } from "../../components/pos/voice-search";
 import { NativeVoiceSearch } from "../../components/pos/native-voice-search";
+import { VoiceSearchTest } from "../../components/pos/voice-search-test";
 import { CameraBarcodeScanner } from "../../components/pos/camera-barcode-scanner";
 
 export const POSPage: React.FC = () => {
@@ -1453,6 +1454,14 @@ export const POSPage: React.FC = () => {
               onProductFound={handleVoiceProductFound}
               products={products}
               language="en-IN"
+            />
+          </div>
+
+          {/* Voice Search Test Suite */}
+          <div className="bg-white rounded-lg shadow-lg p-4 border">
+            <VoiceSearchTest
+              onProductFound={handleVoiceProductFound}
+              products={products}
             />
           </div>
 

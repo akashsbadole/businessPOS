@@ -2,6 +2,27 @@ import React from "react";
 import { Button, Card, CardBody, Chip, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
+// Suppress browser extension errors
+window.addEventListener("error", (e) => {
+  if (
+    e.message.includes("Could not establish connection") ||
+    e.message.includes("Receiving end does not exist")
+  ) {
+    e.preventDefault();
+    return false;
+  }
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  if (
+    e.reason?.message?.includes("Could not establish connection") ||
+    e.reason?.message?.includes("Receiving end does not exist")
+  ) {
+    e.preventDefault();
+    return false;
+  }
+});
+
 interface NativeVoiceSearchProps {
   onResult: (text: string) => void;
   onProductFound?: (product: any, quantity?: number) => void;
@@ -441,6 +462,24 @@ export const NativeVoiceSearch: React.FC<NativeVoiceSearchProps> = ({
           isDisabled={!isSupported || (!isOnline && !showManualSearch)}
         >
           {isListening ? "🔴 Stop" : "🎤 Voice Search"}
+        </Button>
+
+        {/* Test Button - simulate voice commands */}
+        <Button
+          color="success"
+          variant="flat"
+          onPress={() => {
+            const testCommands = ["add milk", "add 2 biscuits", "add rice"];
+            const randomCommand =
+              testCommands[Math.floor(Math.random() * testCommands.length)];
+            console.log("🧪 Testing voice command:", randomCommand);
+            processVoiceCommand(randomCommand);
+          }}
+          startContent={<Icon icon="lucide:flask" />}
+          size="lg"
+          isDisabled={isListening}
+        >
+          Test
         </Button>
 
         {/* Retry Button - show when there are network issues */}
