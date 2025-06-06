@@ -39,6 +39,7 @@ import {
 } from "../../components/pos/voice-search";
 import { NativeVoiceSearch } from "../../components/pos/native-voice-search";
 import { VoiceSearchTest } from "../../components/pos/voice-search-test";
+import { AIVoiceSearch } from "../../components/pos/ai-voice-search";
 import { CameraBarcodeScanner } from "../../components/pos/camera-barcode-scanner";
 
 export const POSPage: React.FC = () => {
@@ -1431,10 +1432,23 @@ export const POSPage: React.FC = () => {
       {/* Voice Search */}
       {showVoiceSearch && (
         <div className="fixed bottom-4 right-4 z-50 w-80 space-y-4">
-          {/* React Speech Recognition Implementation */}
+          {/* AI-Powered Voice Search (Primary) */}
+          <div className="bg-white rounded-lg shadow-lg p-4 border border-blue-200">
+            <h3 className="text-sm font-medium mb-2 text-blue-700">
+              🤖 AI Voice Search (Gemini Flash 2.0)
+            </h3>
+            <AIVoiceSearch
+              onResult={handleVoiceResult}
+              onProductFound={handleVoiceProductFound}
+              products={products}
+              language="en-IN"
+            />
+          </div>
+
+          {/* React Speech Recognition Implementation (Fallback) */}
           <div className="bg-white rounded-lg shadow-lg p-4 border">
             <h3 className="text-sm font-medium mb-2 text-gray-700">
-              🎤 React Speech Recognition
+              🎤 React Speech Recognition (Fallback)
             </h3>
             <VoiceSearch
               onResult={handleVoiceResult}

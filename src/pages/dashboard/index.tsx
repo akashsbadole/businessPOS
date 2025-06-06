@@ -25,6 +25,7 @@ import { useDashboardStore } from "../../stores/dashboard-store";
 import { DummyDataLoader } from "../../components/admin/dummy-data-loader";
 import { formatCurrency } from "../../utils/currency";
 import { BusinessIntelligence } from "../../components/dashboard/business-intelligence";
+import { BusinessIntelligenceDashboard } from "../../components/dashboard/business-intelligence-dashboard";
 
 // Mock data for demonstration
 const mockStats: DashboardStats = {
@@ -717,12 +718,32 @@ export const DashboardPage: React.FC = () => {
           key="business-intelligence"
           title={
             <div className="flex items-center gap-2">
-              <Icon icon="lucide:bar-chart-3" />
-              <span>Business Intelligence</span>
+              <Icon icon="lucide:brain" />
+              <span>AI Business Intelligence</span>
             </div>
           }
         >
-          <BusinessIntelligence />
+          <div className="space-y-6">
+            {/* AI-Powered Business Intelligence */}
+            <BusinessIntelligenceDashboard
+              salesData={stats.recentTransactions || []}
+              products={stats.topProducts?.map((tp) => tp.product) || []}
+              customers={[]}
+              inventory={stats.topProducts?.map((tp) => tp.product) || []}
+            />
+
+            {/* Traditional Business Intelligence */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold">
+                  📊 Traditional Analytics
+                </h3>
+              </CardHeader>
+              <CardBody>
+                <BusinessIntelligence />
+              </CardBody>
+            </Card>
+          </div>
         </Tab>
       </Tabs>
     </div>
