@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { searchAnalyticsService } from "../services/search-analytics-service";
 import { Product, CartItem, Customer, Transaction } from "../types/pos";
 import { useDatabaseStore } from "./database-store";
 // import { ProductService, InvoiceService } from "../services/database-factory";
@@ -26,7 +27,11 @@ interface POSState {
   showInvoiceView: boolean;
 
   // Actions
-  addToCart: (product: Product, quantity?: number) => void;
+  addToCart: (
+    product: Product,
+    quantity?: number,
+    searchEventId?: string
+  ) => void;
   updateCartItemQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
   clearCart: () => void;
@@ -73,9 +78,18 @@ export const usePOSStore = create<POSState>()(
         showInvoiceView: false,
 
         // Cart actions
-        addToCart: (product: Product, quantity = 1) => {
+        addToCart: (product: Product, quantity = 1, searchEventId?: string) => {
           const { cartItems } = get();
           const existingItem = cartItems.find((item) => item.id === product.id);
+
+          // Track product selection in analytics
+          if (searchEventId) {
+            searchAnalyticsService.trackProductSelection(
+              searchEventId,
+              product.id,
+              product.name
+            );
+          }
 
           if (existingItem) {
             // Update quantity if item already exists

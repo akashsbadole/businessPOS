@@ -40,7 +40,9 @@ import {
 import { NativeVoiceSearch } from "../../components/pos/native-voice-search";
 import { VoiceSearchTest } from "../../components/pos/voice-search-test";
 import { AIVoiceSearch } from "../../components/pos/ai-voice-search";
+import { SmartSearchInput } from "../../components/pos/smart-search-input";
 import { CameraBarcodeScanner } from "../../components/pos/camera-barcode-scanner";
+import { searchAnalyticsService } from "../../services/search-analytics-service";
 
 export const POSPage: React.FC = () => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -220,6 +222,11 @@ export const POSPage: React.FC = () => {
   const [showVoiceSearch, setShowVoiceSearch] = React.useState(false);
   const [showCameraScanner, setShowCameraScanner] = React.useState(false);
 
+  // Search analytics
+  const [currentSearchEventId, setCurrentSearchEventId] = React.useState<
+    string | null
+  >(null);
+
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -385,10 +392,11 @@ export const POSPage: React.FC = () => {
     }
   }, [dbCustomers]);
 
-  // Search products
+  // Search products with analytics
   React.useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredProducts(products);
+      setCurrentSearchEventId(null);
     } else {
       const filtered = products.filter(
         (product) =>
@@ -397,6 +405,14 @@ export const POSPage: React.FC = () => {
           product.hsn?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredProducts(filtered);
+
+      // Track search analytics
+      const eventId = searchAnalyticsService.trackSearch(
+        searchQuery,
+        filtered.length,
+        "manual"
+      );
+      setCurrentSearchEventId(eventId);
     }
   }, [searchQuery, products]);
 
@@ -591,107 +607,68 @@ export const POSPage: React.FC = () => {
         <InventorySyncStatus />
       </div>
 
-      {/* Search bar */}
+      {/* Smart Search Bar with Auto-Suggestions */}
       <div className="p-2 border-b border-gray-200">
-        <Input
-          placeholder="Scan or search by item code, model no or item name"
-          size="sm"
-          value={searchQuery}
-          onValueChange={setSearchQuery}
-          endContent={
-            <div className="flex gap-1">
-              <Kbd className="hidden sm:inline-block">Ctrl+F</Kbd>
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={openProductSearch}
-                title="Advanced Search"
-              >
-                <Icon icon="lucide:search" />
-              </Button>
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={() => loadProducts()}
-                isLoading={isLoadingProducts}
-                title="Refresh Products"
-              >
-                <Icon icon="lucide:refresh-cw" />
-              </Button>
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={() => setShowVoiceSearch(!showVoiceSearch)}
-                title="Voice Search"
-                color={showVoiceSearch ? "primary" : "default"}
-              >
-                <Icon icon="lucide:mic" />
-              </Button>
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={() => setShowCameraScanner(true)}
-                title="Camera Barcode Scanner"
-              >
-                <Icon icon="lucide:camera" />
-              </Button>
-              <Button
-                isIconOnly
-                variant="light"
-                size="sm"
-                onPress={onOpen}
-                aria-label="Open Product Catalog"
-                title="Product Catalog"
-              >
-                <Icon icon="lucide:package" />
-              </Button>
-            </div>
-          }
-        />
-        {/* Quick search results */}
-        {searchQuery && filteredProducts.length > 0 && !isProductSearchOpen && (
-          <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
-            {filteredProducts.slice(0, 5).map((product) => (
-              <div
-                key={product.id}
-                className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
-                onClick={() => {
-                  addToCart(product);
-                  setSearchQuery("");
-                }}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-sm text-gray-500">
-                      {product.barcode} | Stock: {product.stock}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">₹{product.price}</div>
-                    <div className="text-sm text-gray-500">
-                      {product.category}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div className="p-2 text-center border-t bg-gray-50">
-              <Button
-                size="sm"
-                variant="flat"
-                onPress={openProductSearch}
-                startContent={<Icon icon="lucide:search" />}
-              >
-                Advanced Search (Ctrl+F)
-              </Button>
-            </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <SmartSearchInput
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              products={products}
+              onProductSelect={(product) => {
+                addToCart(product, 1, currentSearchEventId);
+                setSearchQuery("");
+              }}
+              onCategoryFilter={(category) => {
+                const categoryProducts = products.filter(
+                  (p) => p.category === category
+                );
+                setFilteredProducts(categoryProducts);
+              }}
+              placeholder="Search products, scan barcode, or use voice search..."
+              size="sm"
+              autoFocus={false}
+              showVoiceButton={true}
+              onVoiceSearch={() => setShowVoiceSearch(!showVoiceSearch)}
+              showAdvancedSearch={true}
+              onAdvancedSearch={openProductSearch}
+              isLoading={isLoadingProducts}
+            />
           </div>
-        )}
+
+          {/* Additional Action Buttons */}
+          <div className="flex gap-1">
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={() => loadProducts()}
+              isLoading={isLoadingProducts}
+              title="Refresh Products"
+            >
+              <Icon icon="lucide:refresh-cw" />
+            </Button>
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={() => setShowCameraScanner(true)}
+              title="Camera Barcode Scanner"
+            >
+              <Icon icon="lucide:camera" />
+            </Button>
+            <Button
+              isIconOnly
+              variant="light"
+              size="sm"
+              onPress={onOpen}
+              aria-label="Open Product Catalog"
+              title="Product Catalog"
+            >
+              <Icon icon="lucide:package" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Main content */}

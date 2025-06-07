@@ -28,6 +28,9 @@ import {
   useSubscription,
 } from "./contexts/subscription-context";
 
+// PWA Provider
+import { PWAContextProvider } from "./components/pwa/pwa-provider";
+
 // Layouts
 import { MainLayout } from "./layouts/main-layout";
 
@@ -156,11 +159,13 @@ export default function App() {
   return (
     <Router>
       <ToastProvider />
-      <SubscriptionProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </SubscriptionProvider>
+      <PWAContextProvider>
+        <SubscriptionProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </SubscriptionProvider>
+      </PWAContextProvider>
     </Router>
   );
 }

@@ -19,6 +19,7 @@ import { useAuth } from "../contexts/auth-context";
 import { useSubscription } from "../contexts/subscription-context";
 import { MobileNav } from "../components/navigation/mobile-nav";
 import { BottomNav } from "../components/navigation/bottom-nav";
+import { PWAInstallButton } from "../components/pwa/pwa-install-button";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -159,6 +160,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </Button>
             </Badge>
           )}
+
+          {/* PWA Install Button */}
+          <PWAInstallButton />
 
           {/* Payment Tracker Button */}
           <Button

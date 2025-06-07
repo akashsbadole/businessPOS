@@ -26,6 +26,7 @@ import { DummyDataLoader } from "../../components/admin/dummy-data-loader";
 import { formatCurrency } from "../../utils/currency";
 import { BusinessIntelligence } from "../../components/dashboard/business-intelligence";
 import { BusinessIntelligenceDashboard } from "../../components/dashboard/business-intelligence-dashboard";
+import { SearchAnalyticsDashboard } from "../../components/dashboard/search-analytics-dashboard";
 
 // Mock data for demonstration
 const mockStats: DashboardStats = {
@@ -744,6 +745,18 @@ export const DashboardPage: React.FC = () => {
               </CardBody>
             </Card>
           </div>
+        </Tab>
+
+        <Tab
+          key="search-analytics"
+          title={
+            <div className="flex items-center gap-2">
+              <Icon icon="lucide:search" />
+              <span>Search Analytics</span>
+            </div>
+          }
+        >
+          <SearchAnalyticsDashboard />
         </Tab>
       </Tabs>
     </div>

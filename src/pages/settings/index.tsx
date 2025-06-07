@@ -15,6 +15,7 @@ import {
 import { Icon } from "@iconify/react";
 import { UsersPermissions } from "./users-permissions";
 import { DatabaseStatus } from "../../components/database-status";
+import { PWASettings } from "../../components/pwa/pwa-settings";
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState("business");
@@ -94,6 +95,15 @@ export const SettingsPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Icon icon="lucide:printer" />
                       <span>Hardware</span>
+                    </div>
+                  }
+                />
+                <Tab
+                  key="pwa"
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Icon icon="lucide:smartphone" />
+                      <span>PWA Settings</span>
                     </div>
                   }
                 />
@@ -319,6 +329,14 @@ export const SettingsPage: React.FC = () => {
             </Card>
           )}
 
+          {activeTab === "pwa" && (
+            <Card>
+              <CardBody>
+                <PWASettings />
+              </CardBody>
+            </Card>
+          )}
+
           {activeTab === "backup" && (
             <div className="space-y-6">
               <DatabaseStatus />
@@ -340,6 +358,7 @@ export const SettingsPage: React.FC = () => {
           {activeTab !== "business" &&
             activeTab !== "tax" &&
             activeTab !== "users" &&
+            activeTab !== "pwa" &&
             activeTab !== "backup" && (
               <Card>
                 <CardBody>
